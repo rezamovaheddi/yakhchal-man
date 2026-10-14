@@ -42,3 +42,4 @@ yarn-error.*
 .claude/
 dist/
 temp_app/
+*.apk
