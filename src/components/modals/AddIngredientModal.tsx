@@ -21,7 +21,20 @@ interface AddIngredientModalProps {
   onAdd: (newIngredient: Omit<Ingredient, 'id'>) => void;
 }
 
-const AVAILABLE_ICONS = ['egg', 'tomato', 'potato', 'cheese', 'milk', 'onion'];
+const AVAILABLE_ICONS = [
+  'egg',
+  'tomato',
+  'potato',
+  'cheese',
+  'milk',
+  'onion',
+  'garlic',
+  'carrot',
+  'mushroom',
+  'chicken',
+  'butter',
+  'bread',
+];
 const UNITS: IngredientUnit[] = ['عدد', 'بسته', 'لیتر', 'کیلوگرم', 'حبه'];
 const CATEGORIES: IngredientCategory[] = [
   'سبزیجات',

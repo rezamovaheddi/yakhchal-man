@@ -77,4 +77,33 @@ describe('Recipe Engine', () => {
     expect(ranked[0].recipe.id).toBe('r1'); // omelette 100%
     expect(ranked[1].recipe.id).toBe('r2'); // kookoo 33%
   });
+
+  test('successfully processes newly added recipes with selected items', () => {
+    const selectedItems: Ingredient[] = [
+      { id: '1', name: 'تخم‌مرغ', quantity: 2, unit: 'عدد', category: 'پروتئین', iconName: 'egg' },
+      { id: '2', name: 'نان', quantity: 2, unit: 'عدد', category: 'سایر', iconName: 'bread' },
+      { id: '3', name: 'شیر', quantity: 1, unit: 'لیتر', category: 'لبنیات', iconName: 'milk' },
+    ];
+
+    const frenchToast: Recipe = {
+      id: 'rec-10',
+      title: 'تست فرانسوی طلایی',
+      description: 'صبحانه‌ای لوکس و نوستالژیک',
+      prepTime: '۱۰ دقیقه',
+      difficulty: 'آسان',
+      category: 'صبحانه و عصرانه',
+      iconName: 'bread',
+      ingredients: [
+        { name: 'نان', requiredQuantity: 2, unit: 'عدد' },
+        { name: 'تخم‌مرغ', requiredQuantity: 2, unit: 'عدد' },
+        { name: 'شیر', requiredQuantity: 1, unit: 'لیتر' },
+      ],
+      instructions: ['تخم‌مرغ و شیر را هم بزنید'],
+    };
+
+    const result = checkRecipeAvailability(frenchToast, selectedItems);
+    expect(result.isFullyAvailable).toBe(true);
+    expect(result.percentage).toBe(100);
+    expect(result.missingIngredients.length).toBe(0);
+  });
 });

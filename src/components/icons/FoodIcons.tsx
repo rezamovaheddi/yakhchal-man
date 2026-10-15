@@ -162,6 +162,107 @@ export const OmeletteIcon: React.FC<IconProps> = ({ size = 48 }) => (
   </Svg>
 );
 
+export const GarlicIcon: React.FC<IconProps> = ({ size = 36 }) => (
+  <Svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+    <Path
+      d="M18 6C13 11 9 17 9 23C9 28 13 31 18 31C23 31 27 28 27 23C27 17 23 11 18 6Z"
+      fill="#FBF8EE"
+      stroke={COLORS.black}
+      strokeWidth="2.5"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M18 6V31M18 6C14 13 13 23 15 29M18 6C22 13 23 23 21 29"
+      stroke="#DDD3B8"
+      strokeWidth="1.5"
+    />
+    <Path d="M18 6V3" stroke={COLORS.green} strokeWidth="2.5" strokeLinecap="round" />
+  </Svg>
+);
+
+export const CarrotIcon: React.FC<IconProps> = ({ size = 36 }) => (
+  <Svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+    <Path
+      d="M24 10L14 30C13 32 11 31 11 29L12 12C12 10 14 9 16 9L24 10Z"
+      fill="#FF7A29"
+      stroke={COLORS.black}
+      strokeWidth="2.5"
+      strokeLinejoin="round"
+    />
+    <Path d="M14 16L19 17M13 22L17 23" stroke="#D9570B" strokeWidth="1.5" strokeLinecap="round" />
+    <Path d="M21 9L27 4M20 7L24 2M18 8L20 3" stroke={COLORS.green} strokeWidth="2.5" strokeLinecap="round" />
+  </Svg>
+);
+
+export const MushroomIcon: React.FC<IconProps> = ({ size = 36 }) => (
+  <Svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+    <Path
+      d="M14 20V28C14 30 16 31 18 31C20 31 22 30 22 28V20H14Z"
+      fill="#F4EDE2"
+      stroke={COLORS.black}
+      strokeWidth="2.5"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M6 20C6 11 11 6 18 6C25 6 30 11 30 20H6Z"
+      fill="#B85D3B"
+      stroke={COLORS.black}
+      strokeWidth="2.5"
+      strokeLinejoin="round"
+    />
+    <Circle cx="12" cy="14" r="2" fill="#FFFDF8" />
+    <Circle cx="23" cy="13" r="2.2" fill="#FFFDF8" />
+    <Circle cx="18" cy="10" r="1.5" fill="#FFFDF8" />
+  </Svg>
+);
+
+export const ChickenIcon: React.FC<IconProps> = ({ size = 36 }) => (
+  <Svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+    <Path
+      d="M24 12C20 8 13 10 11 15C9 20 12 25 17 26C22 27 28 22 28 17C28 15 26 13 24 12Z"
+      fill="#DE8B35"
+      stroke={COLORS.black}
+      strokeWidth="2.5"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M11 23L5 29M6 31C5 32 3 32 3 30C3 28 4 28 5 29M7 27C7 26 5 25 4 26"
+      stroke={COLORS.black}
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    />
+    <Circle cx="19" cy="17" r="3" fill="#BF6F1F" />
+  </Svg>
+);
+
+export const ButterIcon: React.FC<IconProps> = ({ size = 36 }) => (
+  <Svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+    <Path d="M5 25H31V28H5V25Z" fill="#DDD" stroke={COLORS.black} strokeWidth="2" />
+    <Path d="M8 25L12 16H28L25 25H8Z" fill="#FFE066" stroke={COLORS.black} strokeWidth="2.5" strokeLinejoin="round" />
+    <Path d="M12 16L18 12H30L28 16H12Z" fill="#FFF3A8" stroke={COLORS.black} strokeWidth="2" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const BreadIcon: React.FC<IconProps> = ({ size = 36 }) => (
+  <Svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+    <Path
+      d="M8 17C8 10 13 8 18 8C23 8 28 10 28 17V26C28 28 26 30 24 30H12C10 30 8 28 8 26V17Z"
+      fill="#FCEFD2"
+      stroke={COLORS.black}
+      strokeWidth="2.5"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M7 16C7 9 12 7 18 7C24 7 29 9 29 16C29 18 27 20 25 20H11C9 20 7 18 7 16Z"
+      fill="#C67D38"
+      stroke={COLORS.black}
+      strokeWidth="2.5"
+      strokeLinejoin="round"
+    />
+    <Path d="M13 13L16 11M19 13L22 11" stroke="#FCEFD2" strokeWidth="1.5" strokeLinecap="round" />
+  </Svg>
+);
+
 export const FoodIconRenderer: React.FC<{ iconName: string; size?: number }> = ({
   iconName,
   size = 36,
@@ -181,6 +282,18 @@ export const FoodIconRenderer: React.FC<{ iconName: string; size?: number }> = (
       return <OnionIcon size={size} />;
     case 'omelette':
       return <OmeletteIcon size={size} />;
+    case 'garlic':
+      return <GarlicIcon size={size} />;
+    case 'carrot':
+      return <CarrotIcon size={size} />;
+    case 'mushroom':
+      return <MushroomIcon size={size} />;
+    case 'chicken':
+      return <ChickenIcon size={size} />;
+    case 'butter':
+      return <ButterIcon size={size} />;
+    case 'bread':
+      return <BreadIcon size={size} />;
     default:
       return <EggIcon size={size} />;
   }

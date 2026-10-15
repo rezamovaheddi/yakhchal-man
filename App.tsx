@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   I18nManager,
-  Platform,
   StatusBar,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   useFonts,
   Vazirmatn_400Regular,
@@ -17,7 +16,7 @@ import {
 } from '@expo-google-fonts/vazirmatn';
 
 import { Ingredient, Recipe, TabType, ToastMessage } from './src/types';
-import { INITIAL_INGREDIENTS, RECIPES } from './src/constants/initialData';
+import { RECIPES, CATALOG_INGREDIENTS } from './src/constants/initialData';
 import { COLORS, BORDER, RETRO_SHADOW } from './src/constants/theme';
 import { checkRecipeAvailability, rankRecipesByAvailability } from './src/utils/recipeEngine';
 
@@ -27,6 +26,7 @@ import { RecipesScreen } from './src/screens/RecipesScreen';
 import { RetroTabBar } from './src/components/navigation/RetroTabBar';
 import { AddIngredientModal } from './src/components/modals/AddIngredientModal';
 import { RecipeDetailsModal } from './src/components/modals/RecipeDetailsModal';
+import { HomeStep } from './src/components/home/StepWizardBar';
 
 // Enable RTL layout
 if (!I18nManager.isRTL) {
@@ -38,12 +38,25 @@ if (!I18nManager.isRTL) {
   }
 }
 
+const INITIAL_CATALOG: Ingredient[] = CATALOG_INGREDIENTS.map((item, index) => ({
+  ...item,
+  id: `cat-${index + 1}`,
+}));
+
 function MainApp() {
   const insets = useSafeAreaInsets();
 
-  // App States
+  // App & Wizard States
   const [fridgeName, setFridgeName] = useState('یخچال خونه ما');
-  const [ingredients, setIngredients] = useState<Ingredient[]>(INITIAL_INGREDIENTS);
+  const [isFridgeCreated, setIsFridgeCreated] = useState(false);
+  const [homeStep, setHomeStep] = useState<HomeStep>('build_fridge');
+
+  // Catalog & Inventory States
+  const [catalogItems, setCatalogItems] = useState<Ingredient[]>(INITIAL_CATALOG);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+
+  // Navigation & Suggestions
   const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [recommendedRecipeIndex, setRecommendedRecipeIndex] = useState(0);
 
@@ -61,38 +74,102 @@ function MainApp() {
     }, 3000);
   };
 
-  // Ingredient Handlers
-  const handleIncrement = (id: string) => {
-    setIngredients((prev) =>
+  // Step 1: Fridge Creation
+  const handleBuildFridge = (name: string, model: string) => {
+    setFridgeName(name);
+    setIsFridgeCreated(true);
+    setHomeStep('select_items');
+    showToast(`یخچال «${name}» با موفقیت راه‌اندازی شد! حالا اقلام را انتخاب کنید ❄️`);
+  };
+
+  const handleResetFridge = () => {
+    setIsFridgeCreated(false);
+    setHomeStep('build_fridge');
+    showToast('یخچال ریست شد. نام و مشخصات جدید را وارد کنید.', 'info');
+  };
+
+  // Step 2: Item Selection
+  const handleToggleCatalogItem = (id: string) => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleIncrementCatalogItem = (id: string) => {
+    setCatalogItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item))
+    );
+    // Ensure item is selected when user clicks +
+    setSelectedItemIds((prev) => new Set(prev).add(id));
+  };
+
+  const handleDecrementCatalogItem = (id: string) => {
+    setCatalogItems((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
+        item.id === id ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item
       )
     );
   };
 
-  const handleDecrement = (id: string) => {
+  const handleSelectAllItems = () => {
+    setSelectedItemIds(new Set(catalogItems.map((item) => item.id)));
+  };
+
+  const handleDeselectAllItems = () => {
+    setSelectedItemIds(new Set());
+  };
+
+  const handleConfirmSelection = () => {
+    if (selectedItemIds.size === 0) {
+      showToast('لطفاً حداقل یک قلم کالا برای یخچال انتخاب کنید! ⚠️', 'warning');
+      return;
+    }
+    const chosen = catalogItems.filter((item) => selectedItemIds.has(item.id));
+    setIngredients(chosen);
+    setRecommendedRecipeIndex(0);
+    setHomeStep('suggestion_and_items');
+    showToast('پیشنهاد غذا بر اساس اقلام انتخابی شما آماده شد! 🍳', 'success');
+  };
+
+  // Step 3: Inventory Handlers (live updates to recipe availability)
+  const handleIncrementIngredient = (id: string) => {
     setIngredients((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item))
+    );
+    setCatalogItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item))
+    );
+  };
+
+  const handleDecrementIngredient = (id: string) => {
+    setIngredients((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, quantity: Math.max(0, item.quantity - 1) } : item
+      )
+    );
+    setCatalogItems((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, quantity: Math.max(0, item.quantity - 1) } : item
       )
     );
   };
 
-  const handleAddIngredient = (newItem: Omit<Ingredient, 'id'>) => {
+  const handleAddCustomIngredient = (newItem: Omit<Ingredient, 'id'>) => {
     const newId = `ing-${Date.now()}`;
-    setIngredients((prev) => [
-      {
-        ...newItem,
-        id: newId,
-      },
-      ...prev,
-    ]);
+    const fullItem: Ingredient = {
+      ...newItem,
+      id: newId,
+    };
+    setCatalogItems((prev) => [fullItem, ...prev]);
+    setSelectedItemIds((prev) => new Set(prev).add(newId));
+    setIngredients((prev) => [fullItem, ...prev]);
     showToast(`«${newItem.name}» به موجودی یخچال اضافه شد! 🎉`);
-  };
-
-  const handleSaveFridgeName = (name: string) => {
-    setFridgeName(name);
-    showToast(`نام یخچال به «${name}» تغییر یافت! ✨`);
   };
 
   // Recipe Suggestions logic
@@ -124,14 +201,27 @@ function MainApp() {
         {currentTab === 'home' && (
           <HomeScreen
             fridgeName={fridgeName}
-            onSaveFridgeName={handleSaveFridgeName}
+            isFridgeCreated={isFridgeCreated}
+            currentStep={homeStep}
+            onSelectStep={setHomeStep}
+            onBuildFridge={handleBuildFridge}
+            catalogItems={catalogItems}
+            selectedItemIds={selectedItemIds}
+            onToggleCatalogItem={handleToggleCatalogItem}
+            onIncrementCatalogItem={handleIncrementCatalogItem}
+            onDecrementCatalogItem={handleDecrementCatalogItem}
+            onSelectAllItems={handleSelectAllItems}
+            onDeselectAllItems={handleDeselectAllItems}
+            onConfirmSelection={handleConfirmSelection}
+            onBackToFridgeName={() => setHomeStep('build_fridge')}
             ingredients={ingredients}
-            onIncrementIngredient={handleIncrement}
-            onDecrementIngredient={handleDecrement}
+            onIncrementIngredient={handleIncrementIngredient}
+            onDecrementIngredient={handleDecrementIngredient}
             onOpenAddModal={() => setIsAddModalOpen(true)}
             currentRecommendation={currentRecommendation}
             onNextRecipe={handleNextRecipe}
             onViewInstructions={(r) => setSelectedRecipeModal(r)}
+            onResetFridge={handleResetFridge}
           />
         )}
 
@@ -162,7 +252,7 @@ function MainApp() {
       <AddIngredientModal
         visible={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddIngredient}
+        onAdd={handleAddCustomIngredient}
       />
 
       {/* Recipe Instructions Modal */}

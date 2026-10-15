@@ -12,6 +12,8 @@ interface InventorySectionProps {
   onIncrement: (id: string) => void;
   onDecrement: (id: string) => void;
   onOpenAddModal: () => void;
+  onEditSelection?: () => void;
+  fridgeName?: string;
 }
 
 export const InventorySection: React.FC<InventorySectionProps> = ({
@@ -19,88 +21,105 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
   onIncrement,
   onDecrement,
   onOpenAddModal,
+  onEditSelection,
+  fridgeName,
 }) => {
   return (
     <RetroWindow
-      title="موجودی یخچال من"
+      title={fridgeName ? `موجودی ${fridgeName}` : 'موجودی یخچال من'}
       subtitle={`${toPersianDigits(ingredients.length)} قلم کالا ثبت شده`}
     >
       {/* Grid of Item Cards */}
-      <View style={styles.grid}>
-        {ingredients.map((item) => {
-          const isDepleted = item.quantity <= 0;
-          return (
-            <View
-              key={item.id}
-              style={[
-                styles.itemCard,
-                isDepleted && styles.itemCardDepleted,
-              ]}
-            >
-              {/* Card Header with Icon */}
-              <View style={styles.iconCircle}>
-                <FoodIconRenderer iconName={item.iconName} size={32} />
-              </View>
+      {ingredients.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>هنوز هیچ ماده‌ای در این یخچال ثبت نشده است!</Text>
+        </View>
+      ) : (
+        <View style={styles.grid}>
+          {ingredients.map((item) => {
+            const isDepleted = item.quantity <= 0;
+            return (
+              <View
+                key={item.id}
+                style={[
+                  styles.itemCard,
+                  isDepleted && styles.itemCardDepleted,
+                ]}
+              >
+                {/* Card Header with Icon */}
+                <View style={styles.iconCircle}>
+                  <FoodIconRenderer iconName={item.iconName} size={32} />
+                </View>
 
-              {/* Title & Category */}
-              <Text style={styles.itemName} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={styles.itemCategory}>{item.category}</Text>
-
-              {/* Quantity indicator */}
-              <View style={styles.quantityBadge}>
-                <Text style={styles.quantityText}>
-                  {formatQuantity(item.quantity, item.unit)}
+                {/* Title & Category */}
+                <Text style={styles.itemName} numberOfLines={1}>
+                  {item.name}
                 </Text>
-              </View>
+                <Text style={styles.itemCategory}>{item.category}</Text>
 
-              {/* Plus and Minus Controls */}
-              <View style={styles.controlsRow}>
-                <Pressable
-                  onPress={() => onIncrement(item.id)}
-                  style={({ pressed }) => [
-                    styles.counterBtn,
-                    styles.plusBtn,
-                    pressed && styles.counterBtnPressed,
-                  ]}
-                >
-                  <Text style={styles.counterBtnText}>+</Text>
-                </Pressable>
-
-                <View style={styles.quantityNumberBox}>
-                  <Text style={styles.quantityNumberText}>
-                    {toPersianDigits(item.quantity)}
+                {/* Quantity indicator */}
+                <View style={styles.quantityBadge}>
+                  <Text style={styles.quantityText}>
+                    {formatQuantity(item.quantity, item.unit)}
                   </Text>
                 </View>
 
-                <Pressable
-                  onPress={() => onDecrement(item.id)}
-                  disabled={isDepleted}
-                  style={({ pressed }) => [
-                    styles.counterBtn,
-                    styles.minusBtn,
-                    isDepleted && styles.counterBtnDisabled,
-                    pressed && !isDepleted && styles.counterBtnPressed,
-                  ]}
-                >
-                  <Text style={styles.counterBtnText}>-</Text>
-                </Pressable>
-              </View>
-            </View>
-          );
-        })}
-      </View>
+                {/* Plus and Minus Controls */}
+                <View style={styles.controlsRow}>
+                  <Pressable
+                    onPress={() => onIncrement(item.id)}
+                    style={({ pressed }) => [
+                      styles.counterBtn,
+                      styles.plusBtn,
+                      pressed && styles.counterBtnPressed,
+                    ]}
+                  >
+                    <Text style={styles.counterBtnText}>+</Text>
+                  </Pressable>
 
-      {/* Add Food Button */}
+                  <View style={styles.quantityNumberBox}>
+                    <Text style={styles.quantityNumberText}>
+                      {toPersianDigits(item.quantity)}
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    onPress={() => onDecrement(item.id)}
+                    disabled={isDepleted}
+                    style={({ pressed }) => [
+                      styles.counterBtn,
+                      styles.minusBtn,
+                      isDepleted && styles.counterBtnDisabled,
+                      pressed && !isDepleted && styles.counterBtnPressed,
+                    ]}
+                  >
+                    <Text style={styles.counterBtnText}>-</Text>
+                  </Pressable>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Action Buttons */}
       <View style={styles.footerRow}>
         <RetroButton
           label="+ افزودن مواد غذایی"
           variant="yellow"
           onPress={onOpenAddModal}
           size="md"
-          style={styles.addBtn}
+          style={{ flex: 1.2 }}
         />
+        {onEditSelection && (
+          <RetroButton
+            label="ویرایش اقلام"
+            variant="secondary"
+            onPress={onEditSelection}
+            size="md"
+            style={{ flex: 1 }}
+          />
+        )}
       </View>
     </RetroWindow>
   );
@@ -215,9 +234,23 @@ const styles = StyleSheet.create({
     color: COLORS.black,
   },
   footerRow: {
-    marginTop: 4,
+    flexDirection: 'row-reverse',
+    gap: 8,
+    marginTop: 6,
   },
-  addBtn: {
-    width: '100%',
+  emptyContainer: {
+    padding: 16,
+    backgroundColor: COLORS.creamInput,
+    borderRadius: BORDER.radiusSm,
+    borderWidth: 1.5,
+    borderColor: COLORS.black,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  emptyText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.grayDark,
+    textAlign: 'center',
   },
 });

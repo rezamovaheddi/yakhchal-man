@@ -70,10 +70,10 @@ jobs:
 
       - name: 🚀 Create GitHub Release with APK
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}
-          name: ${{ format('یخچال من (My Fridge) - {0}', startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0') }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ format('یخچال من (My Fridge) - {0}', github.ref_name) }}
           body: |
             ## 🍳 اپلیکیشن فارسی «یخچال من» (My Fridge)
             طراحی شده با الهام از رابط کاربری رترو سیستم‌عامل‌های دهه ۱۹۹۰ و منطبق بر طرح مرجع.
