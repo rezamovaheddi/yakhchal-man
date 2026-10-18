@@ -16,6 +16,9 @@
     "android": {
       "package": "com.rezamovaheddi.yakhchalman",
       "versionCode": 2,
+      "permissions": [
+        "REQUEST_INSTALL_PACKAGES"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#D9A78F",
         "foregroundImage": "./assets/android-icon-foreground.png",

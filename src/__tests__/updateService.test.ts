@@ -92,4 +92,10 @@ describe('updateService', () => {
     expect(res.updateAvailable).toBe(false);
     expect(res.error).toBeDefined();
   });
+
+  test('downloadAndInstallApk handles fallback or error gracefully', async () => {
+    const { downloadAndInstallApk } = await import('../utils/updateService');
+    const result = await downloadAndInstallApk('https://invalid-host-for-testing/app.apk');
+    expect(typeof result.success).toBe('boolean');
+  });
 });

@@ -1,3 +1,6 @@
+import { Platform, Linking } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { AppReleaseInfo } from '../types';
 
 export const CURRENT_APP_VERSION = '1.1.0';
@@ -87,7 +90,7 @@ export async function checkForAppUpdates(): Promise<{
       publishedAt: data.published_at
         ? new Date(data.published_at).toLocaleDateString('fa-IR')
         : '',
-      downloadUrl: apkAsset?.browser_download_url || data.html_url,
+      downloadUrl: apkAsset?.browser_download_url || undefined,
       webUrl: data.html_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`,
       isMandatory: data.body?.includes('[mandatory]') || false,
     };
@@ -106,6 +109,70 @@ export async function checkForAppUpdates(): Promise<{
       currentVersion: CURRENT_APP_VERSION,
       latestRelease: null,
       error: 'امکان اتصال به اینترنت جهت بررسی به‌روزرسانی فراهم نیست.',
+    };
+  }
+}
+
+/**
+ * Downloads the APK directly inside the app with real-time percentage callback,
+ * converts the file to a secure Android content URI via FileProvider, and triggers
+ * the native package installer intent without opening a browser or GitHub web page.
+ */
+export async function downloadAndInstallApk(
+  apkUrl: string,
+  onProgress?: (percentage: number) => void
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (Platform.OS !== 'android') {
+      // If running on web or iOS, fallback to opening URL directly
+      await Linking.openURL(apkUrl);
+      return { success: true };
+    }
+
+    const fileName = `yakhchal-man-update-${Date.now()}.apk`;
+    const targetFileUri = `${FileSystem.cacheDirectory}${fileName}`;
+
+    let lastReportedPercent = 0;
+    const progressCallback = (data: FileSystem.DownloadProgressData) => {
+      if (data.totalBytesExpectedToWrite > 0) {
+        const percent = Math.min(100, Math.round((data.totalBytesWritten / data.totalBytesExpectedToWrite) * 100));
+        if (percent > lastReportedPercent) {
+          lastReportedPercent = percent;
+          onProgress?.(percent);
+        }
+      }
+    };
+
+    const downloadResumable = FileSystem.createDownloadResumable(
+      apkUrl,
+      targetFileUri,
+      {},
+      progressCallback
+    );
+
+    const downloadResult = await downloadResumable.downloadAsync();
+    if (!downloadResult || downloadResult.status !== 200) {
+      throw new Error(`خطا در دانلود فایل به‌روزرسانی (کد وضعیت: ${downloadResult?.status || 'نامشخص'})`);
+    }
+
+    onProgress?.(100);
+
+    // Convert local file URI to Android content URI using FileProvider
+    const contentUri = await FileSystem.getContentUriAsync(downloadResult.uri);
+
+    // Launch package installer intent with FLAG_GRANT_READ_URI_PERMISSION (1)
+    await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+      data: contentUri,
+      type: 'application/vnd.android.package-archive',
+      flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    console.warn('[updateService] In-app install error:', err);
+    return {
+      success: false,
+      error: err?.message || 'خطا در دانلود یا راه‌اندازی فرآیند نصب بسته.',
     };
   }
 }

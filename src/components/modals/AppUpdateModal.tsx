@@ -13,7 +13,7 @@ import { RetroButton } from '../common/RetroButton';
 import { RetroBadge } from '../common/RetroBadge';
 import { RetroProgressBar } from '../common/RetroProgressBar';
 import { AppReleaseInfo, UpdateCheckState } from '../../types';
-import { CURRENT_APP_VERSION } from '../../utils/updateService';
+import { CURRENT_APP_VERSION, downloadAndInstallApk } from '../../utils/updateService';
 import { toPersianDigits } from '../../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 
@@ -35,22 +35,53 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
   onRetryCheck,
 }) => {
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
+  const [installStatusText, setInstallStatusText] = useState<string>('');
+  const [installError, setInstallError] = useState<string | null>(null);
 
   const handleStartUpdate = async () => {
     if (!releaseInfo) return;
-    const targetUrl = releaseInfo.downloadUrl || releaseInfo.webUrl;
-    try {
-      // Simulate retro progress feedback before opening download/browser link
-      setDownloadProgress(25);
-      setTimeout(() => setDownloadProgress(70), 300);
-      setTimeout(async () => {
+    setInstallError(null);
+
+    // If there is a direct APK asset download URL
+    if (releaseInfo.downloadUrl) {
+      setDownloadProgress(0);
+      setInstallStatusText('در حال دانلود بسته نصب...');
+
+      const result = await downloadAndInstallApk(releaseInfo.downloadUrl, (percent) => {
+        setDownloadProgress(percent);
+        if (percent >= 100) {
+          setInstallStatusText('دانلود انجام شد! در حال آماده‌سازی و راه‌اندازی نصب...');
+        } else {
+          setInstallStatusText(`در حال دانلود مستقیم بسته (${toPersianDigits(percent)}٪)...`);
+        }
+      });
+
+      if (!result.success) {
+        setInstallError(result.error || 'خطا در بارگیری یا نصب بسته.');
+        setDownloadProgress(null);
+      } else {
+        // Installer launched!
+        setTimeout(() => {
+          setDownloadProgress(null);
+          setInstallStatusText('');
+          onClose();
+        }, 1500);
+      }
+    } else {
+      // Fallback if release only has HTML webUrl
+      try {
         setDownloadProgress(100);
-        await Linking.openURL(targetUrl);
-        setTimeout(() => setDownloadProgress(null), 1000);
-      }, 700);
-    } catch (e) {
-      console.warn('Could not open update URL:', e);
-      setDownloadProgress(null);
+        setInstallStatusText('فایل مستقیم یافت نشد، در حال ارجاع به صفحه انتشار...');
+        await Linking.openURL(releaseInfo.webUrl);
+        setTimeout(() => {
+          setDownloadProgress(null);
+          setInstallStatusText('');
+          onClose();
+        }, 1000);
+      } catch (e: any) {
+        setInstallError('امکان باز کردن نشانی به‌روزرسانی وجود ندارد.');
+        setDownloadProgress(null);
+      }
     }
   };
 
@@ -159,22 +190,34 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
                   {downloadProgress !== null && (
                     <View style={styles.downloadProgressSection}>
                       <Text style={styles.downloadLabel}>
-                        در حال انتقال به صفحه دانلود ({toPersianDigits(downloadProgress)}٪)...
+                        {installStatusText || `در حال دانلود بسته (${toPersianDigits(downloadProgress)}٪)...`}
                       </Text>
                       <RetroProgressBar
                         percentage={downloadProgress}
                         blockColor={COLORS.green}
-                        style={{ marginTop: 4 }}
+                        style={{ marginTop: 6 }}
                       />
+                    </View>
+                  )}
+
+                  {/* In-App Installation Error if any */}
+                  {installError && (
+                    <View style={styles.installErrorBox}>
+                      <Text style={styles.installErrorText}>⚠️ {installError}</Text>
                     </View>
                   )}
 
                   {/* Actions */}
                   <View style={styles.actionButtons}>
                     <RetroButton
-                      label="دریافت و به‌روزرسانی خودکار 📥"
+                      label={
+                        downloadProgress !== null
+                          ? 'در حال پردازش و نصب... ⏳'
+                          : 'نصب خودکار درون‌برنامه‌ای 📥'
+                      }
                       variant="primary"
                       onPress={handleStartUpdate}
+                      disabled={downloadProgress !== null}
                       size="md"
                     />
 
@@ -182,6 +225,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
                       label="بعداً یادآوری کن"
                       variant="secondary"
                       onPress={onClose}
+                      disabled={downloadProgress !== null}
                       size="sm"
                     />
                   </View>
@@ -320,5 +364,21 @@ const styles = StyleSheet.create({
   actionButtons: {
     gap: 8,
     marginTop: 4,
+  },
+  installErrorBox: {
+    backgroundColor: '#FFEAEA',
+    borderWidth: 1.5,
+    borderColor: '#D32F2F',
+    borderRadius: BORDER.radiusSm,
+    padding: 8,
+    marginBottom: 10,
+    ...RETRO_SHADOW.sm,
+  },
+  installErrorText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B71C1C',
+    textAlign: 'right',
+    lineHeight: 16,
   },
 });
