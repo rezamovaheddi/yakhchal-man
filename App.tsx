@@ -20,6 +20,7 @@ import { RECIPES, CATALOG_INGREDIENTS } from './src/constants/initialData';
 import { COLORS, BORDER, RETRO_SHADOW } from './src/constants/theme';
 import { checkRecipeAvailability, rankRecipesByAvailability } from './src/utils/recipeEngine';
 import { authStorage } from './src/utils/authStorage';
+import { appStorage } from './src/utils/appStorage';
 
 import { HomeScreen } from './src/screens/HomeScreen';
 import { CookingScreen } from './src/screens/CookingScreen';
@@ -73,22 +74,50 @@ function MainApp() {
   const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
-  // Load existing session on startup
+  // Load persisted state (auth session + app state) on startup
   useEffect(() => {
-    const loadSession = async () => {
+    const loadPersistedState = async () => {
       try {
-        const user = await authStorage.getCurrentUser();
+        const [user, persisted] = await Promise.all([
+          authStorage.getCurrentUser(),
+          appStorage.loadAll('یخچال خونه ما', INITIAL_CATALOG),
+        ]);
+
+        // Restore auth session
         if (user) {
           setCurrentUser(user);
-          if (user.fridgeName) {
-            setFridgeName(user.fridgeName);
-          }
+        }
+
+        // Restore fridge name: user's saved fridge name takes priority over
+        // the generic app-level fridge name if a user is logged in.
+        const restoredFridgeName =
+          user?.fridgeName ?? persisted.fridgeName ?? 'یخچال خونه ما';
+        setFridgeName(restoredFridgeName);
+
+        // Restore catalog items (including custom additions and quantity edits)
+        setCatalogItems(persisted.catalogItems);
+
+        // Restore wizard step and derived state
+        const savedStep = persisted.homeStep as import('./src/components/home/StepWizardBar').HomeStep;
+        if (savedStep && savedStep !== 'build_fridge') {
+          setHomeStep(savedStep);
+          setIsFridgeCreated(true);
+        }
+
+        // Restore selected IDs
+        if (persisted.selectedItemIds.length > 0) {
+          setSelectedItemIds(new Set(persisted.selectedItemIds));
+        }
+
+        // Restore inventory
+        if (persisted.inventory.length > 0) {
+          setIngredients(persisted.inventory);
         }
       } catch (e) {
-        console.warn('Failed to load session:', e);
+        console.warn('[App] Failed to load persisted state:', e);
       }
     };
-    loadSession();
+    loadPersistedState();
   }, []);
 
   // Show Toast helper
@@ -133,9 +162,12 @@ function MainApp() {
     showToast(`یخچال «${name}» با موفقیت راه‌اندازی شد! حالا اقلام را انتخاب کنید ❄️`);
   };
 
-  const handleResetFridge = () => {
+  const handleResetFridge = async () => {
+    await appStorage.clearAll();
     setIsFridgeCreated(false);
     setHomeStep('build_fridge');
+    setIngredients([]);
+    setSelectedItemIds(new Set());
     showToast('یخچال ریست شد. نام و مشخصات جدید را وارد کنید.', 'info');
   };
 
@@ -222,7 +254,32 @@ function MainApp() {
     showToast(`«${newItem.name}» به موجودی یخچال اضافه شد! 🎉`);
   };
 
-  // Recipe Suggestions logic
+  // ── Persistence effects ──────────────────────────────────────────────────
+  // Each effect runs whenever the corresponding slice of state changes and
+  // writes it to AsyncStorage so the app survives restarts.
+
+  useEffect(() => {
+    appStorage.saveInventory(ingredients);
+  }, [ingredients]);
+
+  useEffect(() => {
+    appStorage.saveCatalogItems(catalogItems);
+  }, [catalogItems]);
+
+  useEffect(() => {
+    appStorage.saveHomeStep(homeStep);
+  }, [homeStep]);
+
+  useEffect(() => {
+    appStorage.saveSelectedItemIds(Array.from(selectedItemIds));
+  }, [selectedItemIds]);
+
+  useEffect(() => {
+    appStorage.saveFridgeName(fridgeName);
+  }, [fridgeName]);
+  // ────────────────────────────────────────────────────────────────────────
+
+
   const rankedRecipes = rankRecipesByAvailability(RECIPES, ingredients);
   const currentRecommendation =
     rankedRecipes[recommendedRecipeIndex % rankedRecipes.length] ||

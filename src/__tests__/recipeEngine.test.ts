@@ -1,6 +1,10 @@
 import { describe, test, expect } from '@jest/globals';
 import { toPersianDigits, formatQuantity } from '../utils/persian';
-import { checkRecipeAvailability, rankRecipesByAvailability } from '../utils/recipeEngine';
+import {
+  checkRecipeAvailability,
+  rankRecipesByAvailability,
+  normalizePersianName,
+} from '../utils/recipeEngine';
 import { Ingredient, Recipe } from '../types';
 
 describe('Persian Helpers', () => {
@@ -13,6 +17,19 @@ describe('Persian Helpers', () => {
   test('formats quantity with unit', () => {
     expect(formatQuantity(4, 'عدد')).toBe('۴ عدد');
     expect(formatQuantity(1, 'بسته')).toBe('۱ بسته');
+  });
+});
+
+describe('normalizePersianName', () => {
+  test('normalises Arabic ك to Persian ک', () => {
+    // Arabic kaf (U+0643) vs Persian kaf (U+06A9)
+    const arabic = '\u0643\u0627\u0631';
+    const persian = '\u06A9\u0627\u0631';
+    expect(normalizePersianName(arabic)).toBe(normalizePersianName(persian));
+  });
+
+  test('trims and collapses extra spaces', () => {
+    expect(normalizePersianName('  تخم  مرغ  ')).toBe('تخم مرغ');
   });
 });
 
@@ -75,7 +92,7 @@ describe('Recipe Engine', () => {
   test('correctly ranks recipes by cookability percentage', () => {
     const ranked = rankRecipesByAvailability([kookoo, omelette], mockInventory);
     expect(ranked[0].recipe.id).toBe('r1'); // omelette 100%
-    expect(ranked[1].recipe.id).toBe('r2'); // kookoo 33%
+    expect(ranked[1].recipe.id).toBe('r2'); // kookoo ~33%
   });
 
   test('successfully processes newly added recipes with selected items', () => {
@@ -105,5 +122,85 @@ describe('Recipe Engine', () => {
     expect(result.isFullyAvailable).toBe(true);
     expect(result.percentage).toBe(100);
     expect(result.missingIngredients.length).toBe(0);
+  });
+
+  test('sums duplicate inventory entries before matching', () => {
+    // Two separate entries for تخم‌مرغ that together meet the requirement
+    const splitInventory: Ingredient[] = [
+      { id: 'a', name: 'تخم‌مرغ', quantity: 1, unit: 'عدد', category: 'پروتئین', iconName: 'egg' },
+      { id: 'b', name: 'تخم‌مرغ', quantity: 2, unit: 'عدد', category: 'پروتئین', iconName: 'egg' },
+    ];
+
+    const recipe: Recipe = {
+      id: 'dup-test',
+      title: 'آزمون تکراری',
+      description: '',
+      prepTime: '',
+      difficulty: 'آسان',
+      category: 'تست',
+      iconName: 'egg',
+      ingredients: [{ name: 'تخم‌مرغ', requiredQuantity: 3, unit: 'عدد' }],
+      instructions: [],
+    };
+
+    const result = checkRecipeAvailability(recipe, splitInventory);
+    // 1+2 = 3 which equals requiredQuantity 3 → fully available
+    expect(result.isFullyAvailable).toBe(true);
+    expect(result.percentage).toBe(100);
+  });
+
+  test('returns 0% when no inventory is available', () => {
+    const result = checkRecipeAvailability(omelette, []);
+    expect(result.isFullyAvailable).toBe(false);
+    expect(result.percentage).toBe(0);
+    expect(result.missingIngredients).toHaveLength(2);
+  });
+
+  test('does NOT match ingredient names that merely contain each other (no false positives)', () => {
+    // "گوشت" should NOT match "گوشت گوساله" — strict name comparison
+    const inventory: Ingredient[] = [
+      { id: 'x', name: 'گوشت', quantity: 1, unit: 'بسته', category: 'پروتئین', iconName: 'meat' },
+    ];
+
+    const recipe: Recipe = {
+      id: 'strict-test',
+      title: 'خورشت',
+      description: '',
+      prepTime: '',
+      difficulty: 'آسان',
+      category: 'تست',
+      iconName: 'meat',
+      ingredients: [{ name: 'گوشت گوساله', requiredQuantity: 1, unit: 'بسته' }],
+      instructions: [],
+    };
+
+    const result = checkRecipeAvailability(recipe, inventory);
+    // "گوشت" ≠ "گوشت گوساله" → must be missing
+    expect(result.isFullyAvailable).toBe(false);
+    expect(result.missingIngredients).toContain('گوشت گوساله');
+  });
+
+  test('gives partial percentage when quantity is insufficient', () => {
+    // Need 4 eggs, only have 2 → 50% for that ingredient
+    const lowStock: Ingredient[] = [
+      { id: '1', name: 'تخم‌مرغ', quantity: 2, unit: 'عدد', category: 'پروتئین', iconName: 'egg' },
+    ];
+
+    const recipe: Recipe = {
+      id: 'partial-test',
+      title: 'آزمون جزئی',
+      description: '',
+      prepTime: '',
+      difficulty: 'آسان',
+      category: 'تست',
+      iconName: 'egg',
+      ingredients: [{ name: 'تخم‌مرغ', requiredQuantity: 4, unit: 'عدد' }],
+      instructions: [],
+    };
+
+    const result = checkRecipeAvailability(recipe, lowStock);
+    // 2/4 = 50%
+    expect(result.percentage).toBe(50);
+    expect(result.isFullyAvailable).toBe(false);
   });
 });

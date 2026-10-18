@@ -6,13 +6,13 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
-describe('Auth Storage Service', () => {
+describe('Auth Storage Service (local-profile system)', () => {
   beforeEach(async () => {
     await authStorage.saveUsers([]);
     await authStorage.logout();
   });
 
-  test('registers a new user successfully and sets active session', async () => {
+  test('registers a new profile successfully and sets active session', async () => {
     const res = await authStorage.register({
       name: 'رضا موحدی',
       username: 'rezamovaheddi',
@@ -28,6 +28,24 @@ describe('Auth Storage Service', () => {
 
     const currentUser = await authStorage.getCurrentUser();
     expect(currentUser?.username).toBe('rezamovaheddi');
+  });
+
+  test('does NOT store the plain-text password', async () => {
+    const plainPassword = 'mySecret8!';
+    await authStorage.register({
+      name: 'کاربر امن',
+      username: 'secureuser',
+      password: plainPassword,
+      avatar: 'chef',
+    });
+
+    const users = await authStorage.getUsers();
+    const saved = users.find((u) => u.username === 'secureuser');
+    expect(saved).toBeDefined();
+    // The stored value must not equal the plain-text password
+    expect(saved?.password).not.toBe(plainPassword);
+    // It must start with the expected hash prefix
+    expect(saved?.password).toMatch(/^\$lp1\$/);
   });
 
   test('fails registration on duplicate username (case-insensitive)', async () => {
@@ -46,19 +64,30 @@ describe('Auth Storage Service', () => {
     });
 
     expect(duplicateRes.success).toBe(false);
-    expect(duplicateRes.error).toContain('قبلاً ثبت‌نام کرده است');
+    expect(duplicateRes.error).toContain('قبلاً ساخته شده است');
   });
 
-  test('fails registration when password is too short', async () => {
+  test('fails registration when password is shorter than 8 characters', async () => {
     const res = await authStorage.register({
       name: 'کاربر تست',
       username: 'testuser',
-      password: '12',
+      password: '1234',
       avatar: 'robot',
     });
 
     expect(res.success).toBe(false);
-    expect(res.error).toContain('حداقل ۴ نویسه');
+    expect(res.error).toContain('۸ نویسه');
+  });
+
+  test('accepts passwords that are exactly 8 characters', async () => {
+    const res = await authStorage.register({
+      name: 'کاربر هشت',
+      username: 'eightchar',
+      password: '12345678',
+      avatar: 'chef',
+    });
+
+    expect(res.success).toBe(true);
   });
 
   test('logs in successfully with valid credentials and logs out', async () => {
@@ -93,5 +122,27 @@ describe('Auth Storage Service', () => {
     const failedRes = await authStorage.login('ali', 'wrongPassword');
     expect(failedRes.success).toBe(false);
     expect(failedRes.error).toContain('اشتباه');
+  });
+
+  test('migrates a legacy plain-text password to a hash on successful login', async () => {
+    // Manually insert a "legacy" user record with a plain-text password
+    const legacyUser = {
+      id: 'usr-legacy',
+      name: 'کاربر قدیمی',
+      username: 'legacy',
+      password: 'oldpassword', // plain-text, no $lp1$ prefix
+      avatar: 'chef',
+      createdAt: '۱۴۰۳/۱/۱',
+    };
+    await authStorage.saveUsers([legacyUser]);
+
+    // Login should succeed and migrate the password
+    const loginRes = await authStorage.login('legacy', 'oldpassword');
+    expect(loginRes.success).toBe(true);
+
+    // The stored record should now be hashed
+    const users = await authStorage.getUsers();
+    const updated = users.find((u) => u.username === 'legacy');
+    expect(updated?.password).toMatch(/^\$lp1\$/);
   });
 });
