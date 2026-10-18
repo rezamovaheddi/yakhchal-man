@@ -15,12 +15,22 @@ import {
   Vazirmatn_900Black,
 } from '@expo-google-fonts/vazirmatn';
 
-import { FridgeData, Ingredient, Recipe, TabType, ToastMessage, UserAccount } from './src/types';
+import {
+  FridgeData,
+  Ingredient,
+  Recipe,
+  TabType,
+  ToastMessage,
+  UserAccount,
+  AppReleaseInfo,
+  UpdateCheckState,
+} from './src/types';
 import { RECIPES, CATALOG_INGREDIENTS } from './src/constants/initialData';
 import { COLORS, BORDER, RETRO_SHADOW } from './src/constants/theme';
 import { checkRecipeAvailability, rankRecipesByScore } from './src/utils/recipeEngine';
 import { authStorage } from './src/utils/authStorage';
 import { appStorage } from './src/utils/appStorage';
+import { checkForAppUpdates } from './src/utils/updateService';
 
 import { HomeScreen } from './src/screens/HomeScreen';
 import { CookingScreen } from './src/screens/CookingScreen';
@@ -30,6 +40,7 @@ import { AddIngredientModal } from './src/components/modals/AddIngredientModal';
 import { RecipeDetailsModal } from './src/components/modals/RecipeDetailsModal';
 import { AuthModal } from './src/components/modals/AuthModal';
 import { UserProfileModal } from './src/components/modals/UserProfileModal';
+import { AppUpdateModal } from './src/components/modals/AppUpdateModal';
 import { HomeStep } from './src/components/home/StepWizardBar';
 
 // Enable RTL layout
@@ -93,6 +104,13 @@ function MainApp() {
   const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
+  // ── In-App Updates ────────────────────────────────────────────────────────
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updateState, setUpdateState] = useState<UpdateCheckState>('idle');
+  const [latestRelease, setLatestRelease] = useState<AppReleaseInfo | null>(null);
+  const [updateError, setUpdateError] = useState<string | undefined>(undefined);
+  const [hasAvailableUpdate, setHasAvailableUpdate] = useState(false);
+
   // Guard: skip the first-render auto-save triggered by state initialisation
   const isHydrated = useRef(false);
 
@@ -151,15 +169,49 @@ function MainApp() {
   // needed because React batches updates and we want both to land together)
   const setInventory = (inv: Ingredient[]) => setIngredients(inv);
 
-  // Startup: restore session then load that user's fridge
+  // Startup: restore session then load that user's fridge & check updates silently
   useEffect(() => {
     const init = async () => {
       const user = await authStorage.getCurrentUser();
       setCurrentUser(user);
       await hydrateFridgeForUser(user);
+
+      // Silent background check for updates after launch
+      try {
+        const updateResult = await checkForAppUpdates();
+        if (updateResult.updateAvailable && updateResult.latestRelease) {
+          setHasAvailableUpdate(true);
+          setLatestRelease(updateResult.latestRelease);
+          setUpdateState('available');
+          // Inform user with retro toast
+          showToast(`نسخه جدید (${updateResult.latestRelease.version}) موجود است! برای به‌روزرسانی ضربه بزنید ✨`, 'info');
+        }
+      } catch {
+        // Ignore background check errors
+      }
     };
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Manual update check handler
+  const handleCheckForUpdates = useCallback(async () => {
+    setIsUpdateModalOpen(true);
+    setUpdateState('checking');
+    setUpdateError(undefined);
+
+    const result = await checkForAppUpdates();
+    if (result.error) {
+      setUpdateState('error');
+      setUpdateError(result.error);
+    } else if (result.updateAvailable && result.latestRelease) {
+      setUpdateState('available');
+      setLatestRelease(result.latestRelease);
+      setHasAvailableUpdate(true);
+    } else {
+      setUpdateState('up_to_date');
+      setHasAvailableUpdate(false);
+    }
+  }, []);
 
   // ── Per-user auto-save ────────────────────────────────────────────────────
   /**
@@ -391,6 +443,8 @@ function MainApp() {
             currentUser={currentUser}
             onOpenAuth={() => setIsAuthModalOpen(true)}
             onOpenProfile={() => setIsProfileModalOpen(true)}
+            onCheckUpdates={handleCheckForUpdates}
+            hasUpdate={hasAvailableUpdate}
           />
         )}
 
@@ -433,6 +487,10 @@ function MainApp() {
         onClose={() => setIsProfileModalOpen(false)}
         onLogout={handleLogout}
         onSwitchAccount={handleSwitchAccount}
+        onCheckUpdates={() => {
+          setIsProfileModalOpen(false);
+          handleCheckForUpdates();
+        }}
       />
 
       {/* Add Food Modal */}
@@ -448,6 +506,16 @@ function MainApp() {
         visible={selectedRecipeModal !== null}
         inventory={ingredients}
         onClose={() => setSelectedRecipeModal(null)}
+      />
+
+      {/* In-App Update Modal with Retro UI */}
+      <AppUpdateModal
+        visible={isUpdateModalOpen}
+        state={updateState}
+        releaseInfo={latestRelease}
+        errorMessage={updateError}
+        onClose={() => setIsUpdateModalOpen(false)}
+        onRetryCheck={handleCheckForUpdates}
       />
     </View>
   );

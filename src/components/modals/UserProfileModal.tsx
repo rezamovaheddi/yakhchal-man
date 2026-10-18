@@ -21,6 +21,7 @@ interface UserProfileModalProps {
   onClose: () => void;
   onLogout: () => void;
   onSwitchAccount: () => void;
+  onCheckUpdates?: () => void;
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
@@ -31,6 +32,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onClose,
   onLogout,
   onSwitchAccount,
+  onCheckUpdates,
 }) => {
   if (!user) return null;
 
@@ -85,8 +87,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
               {/* Action Buttons */}
               <View style={styles.actions}>
+                {onCheckUpdates && (
+                  <RetroButton
+                    label="بررسی به‌روزرسانی برنامه 🔄"
+                    variant="primary"
+                    onPress={onCheckUpdates}
+                    size="md"
+                  />
+                )}
+
                 <RetroButton
-                  label="تعویض حساب کاربری 🔄"
+                  label="تعویض حساب کاربری 👤"
                   variant="secondary"
                   onPress={onSwitchAccount}
                   size="md"

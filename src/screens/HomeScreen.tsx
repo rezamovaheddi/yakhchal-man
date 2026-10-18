@@ -38,6 +38,8 @@ interface HomeScreenProps {
   currentUser?: UserAccount | null;
   onOpenAuth: () => void;
   onOpenProfile: () => void;
+  onCheckUpdates?: () => void;
+  hasUpdate?: boolean;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -66,6 +68,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   currentUser,
   onOpenAuth,
   onOpenProfile,
+  onCheckUpdates,
+  hasUpdate,
 }) => {
   return (
     <ScrollView
@@ -78,6 +82,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         currentUser={currentUser}
         onOpenAuth={onOpenAuth}
         onOpenProfile={onOpenProfile}
+        onCheckUpdates={onCheckUpdates}
+        hasUpdate={hasUpdate}
       />
 
       {/* 3-Step Wizard Navigation */}

@@ -66,3 +66,21 @@ export interface FridgeData {
   homeStep: string;
 }
 
+export interface AppReleaseInfo {
+  version: string;
+  title: string;
+  releaseNotes: string;
+  publishedAt: string;
+  downloadUrl?: string;
+  webUrl: string;
+  isMandatory?: boolean;
+}
+
+export type UpdateCheckState =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'up_to_date'
+  | 'error';
+
+

@@ -9,12 +9,16 @@ interface HeaderBarProps {
   currentUser?: UserAccount | null;
   onOpenAuth: () => void;
   onOpenProfile: () => void;
+  onCheckUpdates?: () => void;
+  hasUpdate?: boolean;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
   currentUser,
   onOpenAuth,
   onOpenProfile,
+  onCheckUpdates,
+  hasUpdate,
 }) => {
   return (
     <View style={styles.headerContainer}>
@@ -27,7 +31,11 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           </View>
           <View>
             <Text style={styles.appName}>یخچال من</Text>
-            <Text style={styles.appVersion}>نسخه ۱.۱ (رترو سیستم)</Text>
+            <Pressable onPress={onCheckUpdates}>
+              <Text style={styles.appVersion}>
+                نسخه ۱.۱ {hasUpdate ? '• به‌روزرسانی موجود است! ✨' : '(رترو سیستم)'}
+              </Text>
+            </Pressable>
           </View>
         </View>
 
