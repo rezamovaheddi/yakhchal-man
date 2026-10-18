@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -15,10 +15,11 @@ import {
   Vazirmatn_900Black,
 } from '@expo-google-fonts/vazirmatn';
 
-import { Ingredient, Recipe, TabType, ToastMessage } from './src/types';
+import { Ingredient, Recipe, TabType, ToastMessage, UserAccount } from './src/types';
 import { RECIPES, CATALOG_INGREDIENTS } from './src/constants/initialData';
 import { COLORS, BORDER, RETRO_SHADOW } from './src/constants/theme';
 import { checkRecipeAvailability, rankRecipesByAvailability } from './src/utils/recipeEngine';
+import { authStorage } from './src/utils/authStorage';
 
 import { HomeScreen } from './src/screens/HomeScreen';
 import { CookingScreen } from './src/screens/CookingScreen';
@@ -26,6 +27,8 @@ import { RecipesScreen } from './src/screens/RecipesScreen';
 import { RetroTabBar } from './src/components/navigation/RetroTabBar';
 import { AddIngredientModal } from './src/components/modals/AddIngredientModal';
 import { RecipeDetailsModal } from './src/components/modals/RecipeDetailsModal';
+import { AuthModal } from './src/components/modals/AuthModal';
+import { UserProfileModal } from './src/components/modals/UserProfileModal';
 import { HomeStep } from './src/components/home/StepWizardBar';
 
 // Enable RTL layout
@@ -46,6 +49,11 @@ const INITIAL_CATALOG: Ingredient[] = CATALOG_INGREDIENTS.map((item, index) => (
 function MainApp() {
   const insets = useSafeAreaInsets();
 
+  // Authentication State
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
   // App & Wizard States
   const [fridgeName, setFridgeName] = useState('یخچال خونه ما');
   const [isFridgeCreated, setIsFridgeCreated] = useState(false);
@@ -65,6 +73,24 @@ function MainApp() {
   const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
+  // Load existing session on startup
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const user = await authStorage.getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+          if (user.fridgeName) {
+            setFridgeName(user.fridgeName);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load session:', e);
+      }
+    };
+    loadSession();
+  }, []);
+
   // Show Toast helper
   const showToast = (text: string, type: 'success' | 'info' | 'warning' = 'success') => {
     const id = Date.now().toString();
@@ -72,6 +98,31 @@ function MainApp() {
     setTimeout(() => {
       setToast((prev) => (prev?.id === id ? null : prev));
     }, 3000);
+  };
+
+  // Auth Handlers
+  const handleAuthSuccess = (user: UserAccount, mode: 'login' | 'register') => {
+    setCurrentUser(user);
+    if (user.fridgeName) {
+      setFridgeName(user.fridgeName);
+    }
+    if (mode === 'register') {
+      showToast(`خوش آمدید، ${user.name}! حساب کاربری شما ساخته شد. 🎉`);
+    } else {
+      showToast(`خوش آمدید، ${user.name}! با موفقیت وارد شدید. 🔑`);
+    }
+  };
+
+  const handleLogout = async () => {
+    await authStorage.logout();
+    setCurrentUser(null);
+    setIsProfileModalOpen(false);
+    showToast('با موفقیت از حساب کاربری خارج شدید. 🚪', 'info');
+  };
+
+  const handleSwitchAccount = () => {
+    setIsProfileModalOpen(false);
+    setIsAuthModalOpen(true);
   };
 
   // Step 1: Fridge Creation
@@ -105,7 +156,6 @@ function MainApp() {
     setCatalogItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item))
     );
-    // Ensure item is selected when user clicks +
     setSelectedItemIds((prev) => new Set(prev).add(id));
   };
 
@@ -222,6 +272,9 @@ function MainApp() {
             onNextRecipe={handleNextRecipe}
             onViewInstructions={(r) => setSelectedRecipeModal(r)}
             onResetFridge={handleResetFridge}
+            currentUser={currentUser}
+            onOpenAuth={() => setIsAuthModalOpen(true)}
+            onOpenProfile={() => setIsProfileModalOpen(true)}
           />
         )}
 
@@ -246,6 +299,24 @@ function MainApp() {
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
         bottomInset={insets.bottom}
+      />
+
+      {/* Authentication Modal */}
+      <AuthModal
+        visible={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        visible={isProfileModalOpen}
+        user={currentUser}
+        fridgeName={fridgeName}
+        itemsCount={ingredients.length}
+        onClose={() => setIsProfileModalOpen(false)}
+        onLogout={handleLogout}
+        onSwitchAccount={handleSwitchAccount}
       />
 
       {/* Add Food Modal */}

@@ -1,9 +1,21 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 import { FridgeLogoIcon, RetroMinimizeIcon, RetroMaximizeIcon, RetroCloseIcon } from '../icons/RetroIcons';
+import { AvatarRenderer } from '../icons/AvatarIcons';
+import { UserAccount } from '../../types';
 
-export const HeaderBar: React.FC = () => {
+interface HeaderBarProps {
+  currentUser?: UserAccount | null;
+  onOpenAuth: () => void;
+  onOpenProfile: () => void;
+}
+
+export const HeaderBar: React.FC<HeaderBarProps> = ({
+  currentUser,
+  onOpenAuth,
+  onOpenProfile,
+}) => {
   return (
     <View style={styles.headerContainer}>
       {/* Top Application Bar */}
@@ -15,7 +27,7 @@ export const HeaderBar: React.FC = () => {
           </View>
           <View>
             <Text style={styles.appName}>یخچال من</Text>
-            <Text style={styles.appVersion}>نسخه ۱.۰ (رترو سیستم)</Text>
+            <Text style={styles.appVersion}>نسخه ۱.۱ (رترو سیستم)</Text>
           </View>
         </View>
 
@@ -33,9 +45,33 @@ export const HeaderBar: React.FC = () => {
         </View>
       </View>
 
-      {/* Sub-header Ribbon with Persian Tagline */}
-      <View style={styles.taglineRibbon}>
-        <Text style={styles.taglineText}>با چیزهایی که داری، خوشمزه بپز! ✨</Text>
+      {/* Sub-header Ribbon with Persian Tagline & Account Pill */}
+      <View style={styles.subBar}>
+        <Text style={styles.taglineText} numberOfLines={1}>
+          با چیزهایی که داری، خوشمزه بپز! ✨
+        </Text>
+
+        <Pressable
+          onPress={currentUser ? onOpenProfile : onOpenAuth}
+          style={({ pressed }) => [
+            styles.userBadge,
+            currentUser ? styles.userBadgeLoggedIn : styles.userBadgeGuest,
+            pressed && styles.userBadgePressed,
+          ]}
+        >
+          {currentUser ? (
+            <View style={styles.userBadgeContent}>
+              <AvatarRenderer avatarId={currentUser.avatar} size={18} />
+              <Text style={styles.userNameText} numberOfLines={1}>
+                {currentUser.name}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.userBadgeContent}>
+              <Text style={styles.loginText}>ورود / ثبت‌نام 👤</Text>
+            </View>
+          )}
+        </Pressable>
       </View>
     </View>
   );
@@ -102,17 +138,55 @@ const styles = StyleSheet.create({
   closeBox: {
     backgroundColor: '#FF9E9E',
   },
-  taglineRibbon: {
+  subBar: {
     backgroundColor: COLORS.bgLight,
-    paddingVertical: 5,
+    paddingVertical: 6,
     paddingHorizontal: 10,
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   taglineText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: COLORS.black,
-    textAlign: 'center',
+    flex: 1,
+    textAlign: 'right',
+  },
+  userBadge: {
+    borderWidth: 1.5,
+    borderColor: COLORS.black,
+    borderRadius: 5,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    ...RETRO_SHADOW.sm,
+  },
+  userBadgeLoggedIn: {
+    backgroundColor: COLORS.yellow,
+  },
+  userBadgeGuest: {
+    backgroundColor: COLORS.lavender,
+  },
+  userBadgePressed: {
+    transform: [{ translateX: 1 }, { translateY: 1 }],
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  userBadgeContent: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+  },
+  userNameText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: COLORS.black,
+    maxWidth: 90,
+  },
+  loginText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.black,
   },
 });

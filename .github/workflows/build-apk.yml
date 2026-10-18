@@ -68,28 +68,39 @@ jobs:
           name: yakhchal-man-apk
           path: build-output/yakhchal-man.apk
 
+      - name: 🏷️ Determine Release Tag and Title
+        id: release_info
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${{ github.ref_name }}"
+            RELEASE_NAME="یخچال من (My Fridge) - ${TAG_NAME}"
+          else
+            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+            TAG_NAME="v1.1.${{ github.run_number }}"
+            RELEASE_NAME="یخچال من (My Fridge) - ${TAG_NAME} (${SHORT_SHA})"
+          fi
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+
       - name: 🚀 Create GitHub Release with APK
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ format('یخچال من (My Fridge) - {0}', github.ref_name) }}
+          tag_name: ${{ steps.release_info.outputs.tag_name }}
+          name: ${{ steps.release_info.outputs.release_name }}
           body: |
-            ## 🍳 اپلیکیشن فارسی «یخچال من» (My Fridge)
-            طراحی شده با الهام از رابط کاربری رترو سیستم‌عامل‌های دهه ۱۹۹۰ و منطبق بر طرح مرجع.
+            ## 🍳 اپلیکیشن فارسی «یخچال من» (My Fridge) - نسخه جدید
+            طراحی شده با الهام از رابط کاربری رترو سیستم‌عامل‌های دهه ۱۹۹۰ و سبک Neo-Brutalist.
             
-            ### ✨ امکانات و قابلیت‌ها:
-            - هدر رترو با لوگوی یخچال و دکمه‌های کنترلی سیستم‌عامل
-            - فرم ثبت نام یخچال با فیلد اختصاصی و بازخورد اعلان (Toast)
-            - شبکه کارت‌های موجودی یخچال با آیکون‌های وکتور، شمارشگر و دکمه‌های افزایش/کاهش
-            - فرم افزودن ماده غذایی جدید با انتخاب واحد، دسته‌بندی و آیکون
-            - بخش پیشنهاد هوشمند «امروز چی بپزم؟» با نوار پیشرفت قطعه‌ای رترو بر اساس موجودی واقعی
-            - مشاهده دستور پخت گام‌به‌گام با چک‌لیست اقلام موجود و نکات طلایی سرآشپز
-            - نوار ناوبری ثابت پایینی با ۳ تب: خانه، آشپزی، دستور پخت
-            - تایمر دیجیتال پخت و پز رترو
+            ### ✨ تغییرات و امکانات نسخه جدید:
+            - 👤 **سیستم ساخت حساب کاربری و ورود (Authentication):** امکان ثبت‌نام با نام، نام کاربری، رمز عبور و انتخاب آواتار رترو، ورود به حساب و ذخیره‌سازی سشن
+            - 🧊 **پروفایل کاربری و شناسنامه یخچال:** مشاهده اطلاعات حساب، آواتار انتخابی، آمار اقلام یخچال و امکان خروج یا تعویض حساب کاربری
+            - 📋 **جریان ۳ مرحله‌ای صفحه اصلی:** ساخت یخچال ⬅️ انتخاب اقلام ⬅️ پیشنهاد هوشمند غذا همراه با نمایش زنده فهرست موجودی در همان صفحه
+            - 🎨 **آیکون‌های وکتور جدید و نوستالژیک:** اضافه شدن انواع مواد غذایی و آواتارهای رترو (سرآشپز، پیشی، یخچال جادویی، ربات، ستاره)
+            - ⏱️ **تایمر رترو و دفترچه آشپزی:** محاسبه لحظه‌ای کسری اقلام برای پخت غذا و تایمر دیجیتال پخت‌وپز
             
             ### 📱 فایل خروجی APK:
-            می‌توانید فایل `yakhchal-man.apk` را مستقیماً دانلود و روی گوشی اندروید خود نصب کنید.
+            می‌توانید فایل `yakhchal-man.apk` را مستقیماً از بخش Assets همین ریلیز دانلود و روی گوشی اندروید خود نصب کنید.
           files: build-output/yakhchal-man.apk
           draft: false
           prerelease: false

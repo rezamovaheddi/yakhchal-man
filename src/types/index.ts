@@ -38,3 +38,13 @@ export interface ToastMessage {
   text: string;
   type?: 'success' | 'info' | 'warning';
 }
+
+export interface UserAccount {
+  id: string;
+  name: string;
+  username: string;
+  password: string;
+  avatar: string;
+  createdAt: string;
+  fridgeName?: string;
+}

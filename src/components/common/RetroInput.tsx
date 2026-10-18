@@ -10,7 +10,9 @@ interface RetroInputProps {
   icon?: React.ReactNode;
   style?: ViewStyle;
   inputStyle?: TextStyle;
-  keyboardType?: 'default' | 'numeric';
+  keyboardType?: 'default' | 'numeric' | 'email-address';
+  secureTextEntry?: boolean;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }
 
 export const RetroInput: React.FC<RetroInputProps> = ({
@@ -22,6 +24,8 @@ export const RetroInput: React.FC<RetroInputProps> = ({
   style,
   inputStyle,
   keyboardType = 'default',
+  secureTextEntry = false,
+  autoCapitalize = 'sentences',
 }) => {
   return (
     <View style={[styles.container, style]}>
@@ -35,6 +39,8 @@ export const RetroInput: React.FC<RetroInputProps> = ({
           style={[styles.input, inputStyle]}
           textAlign="right"
           keyboardType={keyboardType}
+          secureTextEntry={secureTextEntry}
+          autoCapitalize={autoCapitalize}
         />
         {icon && <View style={styles.iconBox}>{icon}</View>}
       </View>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Text, Pressable } from 'react-native';
-import { Ingredient, Recipe } from '../types';
+import { Ingredient, Recipe, UserAccount } from '../types';
 import { HeaderBar } from '../components/home/HeaderBar';
 import { StepWizardBar, HomeStep } from '../components/home/StepWizardBar';
 import { FridgeCreationStep } from '../components/home/FridgeCreationStep';
@@ -34,6 +34,9 @@ interface HomeScreenProps {
   onNextRecipe: () => void;
   onViewInstructions: (recipe: Recipe) => void;
   onResetFridge: () => void;
+  currentUser?: UserAccount | null;
+  onOpenAuth: () => void;
+  onOpenProfile: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -59,6 +62,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onNextRecipe,
   onViewInstructions,
   onResetFridge,
+  currentUser,
+  onOpenAuth,
+  onOpenProfile,
 }) => {
   return (
     <ScrollView
@@ -67,7 +73,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       showsVerticalScrollIndicator={false}
     >
       {/* Retro Header with Logo & Tagline */}
-      <HeaderBar />
+      <HeaderBar
+        currentUser={currentUser}
+        onOpenAuth={onOpenAuth}
+        onOpenProfile={onOpenProfile}
+      />
 
       {/* 3-Step Wizard Navigation */}
       <StepWizardBar
