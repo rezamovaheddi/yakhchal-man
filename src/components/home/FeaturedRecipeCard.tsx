@@ -7,7 +7,7 @@ import { RetroBadge } from '../common/RetroBadge';
 import { RetroProgressBar } from '../common/RetroProgressBar';
 import { FoodIconRenderer } from '../icons/FoodIcons';
 import { RetroClockIcon } from '../icons/RetroIcons';
-import { RecipeAvailabilityResult } from '../../utils/recipeEngine';
+import { RecipeAvailabilityResult, suggestSubstitutes } from '../../utils/recipeEngine';
 import { toPersianDigits } from '../../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 
@@ -22,8 +22,10 @@ export const FeaturedRecipeCard: React.FC<FeaturedRecipeCardProps> = ({
   onNextRecipe,
   onViewInstructions,
 }) => {
-  const { recipe, totalRequired, availableCount, percentage, isFullyAvailable } =
+  const { recipe, totalRequired, availableCount, percentage, isFullyAvailable, missingIngredients } =
     availabilityResult;
+
+  const substitutes = suggestSubstitutes(missingIngredients);
 
   return (
     <RetroWindow title="امروز چی بپزم؟" subtitle="پیشنهاد هوشمند سرآشپز">
@@ -35,6 +37,10 @@ export const FeaturedRecipeCard: React.FC<FeaturedRecipeCardProps> = ({
           {isFullyAvailable ? (
             <View style={styles.readyTag}>
               <Text style={styles.readyTagText}>آماده پخت! ✨</Text>
+            </View>
+          ) : missingIngredients.length === 1 ? (
+            <View style={[styles.readyTag, { backgroundColor: COLORS.yellow }]}>
+              <Text style={styles.readyTagText}>فقط ۱ کسری! ⚡</Text>
             </View>
           ) : null}
         </View>
@@ -63,7 +69,9 @@ export const FeaturedRecipeCard: React.FC<FeaturedRecipeCardProps> = ({
       <View style={styles.availabilityBox}>
         <View style={styles.availabilityHeader}>
           <Text style={styles.availabilityLabel}>
-            وضعیت موجودی مواد در یخچال:
+            {isFullyAvailable
+              ? '✅ تمام مواد اولیه در یخچال موجود است:'
+              : 'وضعیت موجودی مواد در یخچال:'}
           </Text>
           <Text style={styles.availabilityCount}>
             {toPersianDigits(availableCount)} از {toPersianDigits(totalRequired)} ماده ({toPersianDigits(percentage)}٪)
@@ -71,14 +79,22 @@ export const FeaturedRecipeCard: React.FC<FeaturedRecipeCardProps> = ({
         </View>
 
         {/* Vintage Windows copy-dialog style segmented progress bar */}
-        <RetroProgressBar percentage={percentage} blockColor={COLORS.lavender} />
+        <RetroProgressBar
+          percentage={percentage}
+          blockColor={isFullyAvailable ? COLORS.green : COLORS.lavender}
+        />
 
-        {/* Missing ingredients notice if any */}
-        {availabilityResult.missingIngredients.length > 0 && (
+        {/* Missing ingredients & substitutes notice if any */}
+        {!isFullyAvailable && missingIngredients.length > 0 && (
           <View style={styles.missingNotice}>
             <Text style={styles.missingText}>
-              کسری: {availabilityResult.missingIngredients.join('، ')}
+              ❌ کسری: {missingIngredients.join('، ')}
             </Text>
+            {substitutes.length > 0 && (
+              <Text style={styles.substituteText}>
+                💡 جایگزین: {substitutes[0].missing} ← {substitutes[0].substitutes[0]}
+              </Text>
+            )}
           </View>
         )}
       </View>
@@ -191,8 +207,15 @@ const styles = StyleSheet.create({
   missingText: {
     fontSize: 11,
     color: '#A83B3B',
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'right',
+  },
+  substituteText: {
+    fontSize: 11,
+    color: '#2E5016',
+    fontWeight: '700',
+    textAlign: 'right',
+    marginTop: 2,
   },
   buttonsRow: {
     flexDirection: 'row-reverse',

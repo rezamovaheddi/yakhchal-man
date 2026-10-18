@@ -18,7 +18,7 @@ import {
 import { FridgeData, Ingredient, Recipe, TabType, ToastMessage, UserAccount } from './src/types';
 import { RECIPES, CATALOG_INGREDIENTS } from './src/constants/initialData';
 import { COLORS, BORDER, RETRO_SHADOW } from './src/constants/theme';
-import { checkRecipeAvailability, rankRecipesByAvailability } from './src/utils/recipeEngine';
+import { checkRecipeAvailability, rankRecipesByScore } from './src/utils/recipeEngine';
 import { authStorage } from './src/utils/authStorage';
 import { appStorage } from './src/utils/appStorage';
 
@@ -338,7 +338,7 @@ function MainApp() {
   );
 
   // ── Recipe suggestions ────────────────────────────────────────────────────
-  const rankedRecipes = rankRecipesByAvailability(RECIPES, ingredients);
+  const rankedRecipes = rankRecipesByScore(RECIPES, ingredients);
   const currentRecommendation =
     rankedRecipes[recommendedRecipeIndex % rankedRecipes.length] ||
     checkRecipeAvailability(RECIPES[0], ingredients);

@@ -7,7 +7,12 @@ import { RetroBadge } from '../components/common/RetroBadge';
 import { RetroProgressBar } from '../components/common/RetroProgressBar';
 import { FoodIconRenderer } from '../components/icons/FoodIcons';
 import { RetroClockIcon } from '../components/icons/RetroIcons';
-import { checkRecipeAvailability } from '../utils/recipeEngine';
+import {
+  rankRecipesByScore,
+  MealFilter,
+  recipeMatchesFilter,
+  suggestSubstitutes,
+} from '../utils/recipeEngine';
 import { toPersianDigits } from '../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../constants/theme';
 
@@ -17,17 +22,34 @@ interface CookingScreenProps {
   onViewInstructions: (recipe: Recipe) => void;
 }
 
+const MEAL_TABS: Array<{ id: MealFilter; label: string }> = [
+  { id: 'همه', label: 'همه' },
+  { id: 'صبحانه', label: 'صبحانه' },
+  { id: 'ناهار_شام', label: 'ناهار و شام' },
+  { id: 'دسر', label: 'دسر و عصرانه' },
+  { id: 'اقتصادی', label: 'کم‌هزینه' },
+];
+
 export const CookingScreen: React.FC<CookingScreenProps> = ({
   recipes,
   inventory,
   onViewInstructions,
 }) => {
   const [filterMode, setFilterMode] = useState<'all' | 'available'>('all');
+  const [mealFilter, setMealFilter] = useState<MealFilter>('همه');
 
-  const evaluated = recipes.map((r) => checkRecipeAvailability(r, inventory));
+  // Rank all recipes by availability + prep time + difficulty
+  const ranked = rankRecipesByScore(recipes, inventory);
+
+  // Apply meal category filter
+  const categoryFiltered = ranked.filter((item) => recipeMatchesFilter(item, mealFilter));
+
+  // Apply availability toggle
   const filtered = filterMode === 'available'
-    ? evaluated.filter((item) => item.isFullyAvailable)
-    : evaluated;
+    ? categoryFiltered.filter((item) => item.isFullyAvailable)
+    : categoryFiltered;
+
+  const readyCount = ranked.filter((e) => e.isFullyAvailable).length;
 
   return (
     <ScrollView
@@ -36,10 +58,19 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
       showsVerticalScrollIndicator={false}
     >
       <RetroWindow
-        title="آشپزخانه و کشف دستور پخت"
-        subtitle="پیشنهاد بر اساس مواد موجود"
+        title="آشپزخانه هوشمند"
+        subtitle="پیشنهاد بر اساس مواد، زمان و سختی"
       >
-        {/* Filter Switcher */}
+        {/* Readiness Summary Banner */}
+        <View style={styles.summaryBanner}>
+          <Text style={styles.summaryBannerText}>
+            🍳 {readyCount > 0
+              ? `همین الان می‌توانید ${toPersianDigits(readyCount)} غذا بپزید!`
+              : 'برای پخت کامل، برخی اقلام را تهیه یا جایگزین کنید.'}
+          </Text>
+        </View>
+
+        {/* Filter Switcher: All vs Ready-now */}
         <View style={styles.filterRow}>
           <Pressable
             onPress={() => setFilterMode('all')}
@@ -54,7 +85,7 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
                 filterMode === 'all' && styles.filterBtnTextActive,
               ]}
             >
-              همه غذاها ({toPersianDigits(evaluated.length)})
+              همه ({toPersianDigits(categoryFiltered.length)})
             </Text>
           </Pressable>
 
@@ -71,23 +102,56 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
                 filterMode === 'available' && styles.filterBtnTextActive,
               ]}
             >
-              قابل پخت الان ({toPersianDigits(evaluated.filter((e) => e.isFullyAvailable).length)})
+              آماده پخت ({toPersianDigits(categoryFiltered.filter((e) => e.isFullyAvailable).length)}) ✨
             </Text>
           </Pressable>
         </View>
+
+        {/* Meal Category Filters: صبحانه، ناهار و شام، دسر، اقتصادی */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.mealFilterScroll}
+          style={styles.mealFilterScrollContainer}
+        >
+          {MEAL_TABS.map((tab) => {
+            const isSelected = mealFilter === tab.id;
+            return (
+              <Pressable
+                key={tab.id}
+                onPress={() => setMealFilter(tab.id)}
+                style={[
+                  styles.mealTabBtn,
+                  isSelected && styles.mealTabBtnActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.mealTabBtnText,
+                    isSelected && styles.mealTabBtnTextActive,
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
 
         {/* List of recipe cards */}
         <View style={styles.recipesList}>
           {filtered.length === 0 ? (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyTitle}>هیچ غذایی با موجودی فعلی یافت نشد!</Text>
+              <Text style={styles.emptyTitle}>هیچ غذایی با این فیلتر یافت نشد!</Text>
               <Text style={styles.emptyDesc}>
-                می‌توانید از تب «خانه»، مواد غذایی جدید به یخچال اضافه کنید.
+                فیلتر دیگری را انتخاب کنید یا از صفحه اصلی، مواد جدیدی به یخچال اضافه فرمایید.
               </Text>
             </View>
           ) : (
             filtered.map((item) => {
-              const { recipe, percentage, isFullyAvailable, availableCount, totalRequired } = item;
+              const { recipe, percentage, isFullyAvailable, availableCount, totalRequired, missingIngredients } = item;
+              const substitutes = suggestSubstitutes(missingIngredients);
+
               return (
                 <View key={recipe.id} style={styles.recipeCard}>
                   <View style={styles.cardHeader}>
@@ -97,12 +161,17 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
                     <View style={styles.headerInfo}>
                       <View style={styles.titleRow}>
                         <Text style={styles.recipeTitle}>{recipe.title}</Text>
-                        {isFullyAvailable && (
+                        {isFullyAvailable ? (
                           <RetroBadge
-                            label="آماده پخت!"
+                            label="قابل پخت الان!"
                             color={COLORS.green}
                           />
-                        )}
+                        ) : missingIngredients.length === 1 ? (
+                          <RetroBadge
+                            label="فقط ۱ کسری!"
+                            color={COLORS.yellow}
+                          />
+                        ) : null}
                       </View>
                       <Text style={styles.recipeCategory}>{recipe.category}</Text>
                     </View>
@@ -123,6 +192,20 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
                     <RetroProgressBar percentage={percentage} />
                   </View>
 
+                  {/* Missing ingredients or Substitutes Alert */}
+                  {!isFullyAvailable && missingIngredients.length > 0 && (
+                    <View style={styles.missingBox}>
+                      <Text style={styles.missingTitle}>
+                        ❌ کسری مواد: {missingIngredients.join('، ')}
+                      </Text>
+                      {substitutes.length > 0 && (
+                        <Text style={styles.substituteHint}>
+                          💡 جایگزین: {substitutes[0].missing} ← {substitutes[0].substitutes[0]}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+
                   {/* Badges and Action */}
                   <View style={styles.cardFooter}>
                     <View style={styles.badges}>
@@ -137,7 +220,7 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
                       />
                     </View>
                     <RetroButton
-                      label="مشاهده دستور پخت"
+                      label="دستور پخت"
                       variant="primary"
                       onPress={() => onViewInstructions(recipe)}
                       size="sm"
@@ -294,5 +377,70 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.grayDark,
     textAlign: 'center',
+  },
+  summaryBanner: {
+    backgroundColor: '#FFF2C6',
+    borderWidth: 1.5,
+    borderColor: COLORS.black,
+    borderRadius: BORDER.radiusSm,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    ...RETRO_SHADOW.sm,
+  },
+  summaryBannerText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.black,
+    textAlign: 'center',
+  },
+  mealFilterScrollContainer: {
+    marginBottom: 12,
+  },
+  mealFilterScroll: {
+    flexDirection: 'row-reverse',
+    gap: 6,
+    paddingHorizontal: 2,
+  },
+  mealTabBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: COLORS.cream,
+    borderWidth: 1.5,
+    borderColor: COLORS.black,
+    borderRadius: 6,
+  },
+  mealTabBtnActive: {
+    backgroundColor: COLORS.orange,
+  },
+  mealTabBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.black,
+  },
+  mealTabBtnTextActive: {
+    fontWeight: '900',
+    color: COLORS.white,
+  },
+  missingBox: {
+    backgroundColor: '#FFEAEA',
+    borderWidth: 1,
+    borderColor: '#E85D54',
+    borderRadius: 4,
+    padding: 6,
+    marginBottom: 8,
+    gap: 3,
+  },
+  missingTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#A82820',
+    textAlign: 'right',
+  },
+  substituteHint: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2E5016',
+    textAlign: 'right',
   },
 });

@@ -7,7 +7,8 @@ import { FridgeCreationStep } from '../components/home/FridgeCreationStep';
 import { ItemSelectionStep } from '../components/home/ItemSelectionStep';
 import { FeaturedRecipeCard } from '../components/home/FeaturedRecipeCard';
 import { InventorySection } from '../components/home/InventorySection';
-import { RecipeAvailabilityResult } from '../utils/recipeEngine';
+import { RecipeAvailabilityResult, getSmartRecipeSummary } from '../utils/recipeEngine';
+import { RECIPES } from '../constants/initialData';
 import { COLORS, BORDER, RETRO_SHADOW } from '../constants/theme';
 import { toPersianDigits } from '../utils/persian';
 
@@ -142,6 +143,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </View>
           </View>
 
+          {/* Smart Food Suggestion Summary Banner */}
+          <View style={styles.smartSummaryCard}>
+            <Text style={styles.smartSummaryText}>
+              💡 {getSmartRecipeSummary(RECIPES, ingredients)}
+            </Text>
+          </View>
+
           {/* Part A: Suggested Recipe based on Selected Items */}
           <FeaturedRecipeCard
             availabilityResult={currentRecommendation}
@@ -222,5 +230,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: COLORS.black,
+  },
+  smartSummaryCard: {
+    backgroundColor: '#FFF2C6',
+    borderWidth: BORDER.thick,
+    borderColor: COLORS.black,
+    borderRadius: BORDER.radiusSm,
+    padding: 10,
+    ...RETRO_SHADOW.sm,
+  },
+  smartSummaryText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.black,
+    textAlign: 'right',
+    lineHeight: 18,
   },
 });

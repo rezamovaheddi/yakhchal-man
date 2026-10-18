@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
   Text,
   StyleSheet,
   ScrollView,
+  Pressable,
 } from 'react-native';
 import { Ingredient, Recipe } from '../../types';
 import { RetroWindow } from '../common/RetroWindow';
@@ -13,6 +14,7 @@ import { RetroBadge } from '../common/RetroBadge';
 import { FoodIconRenderer } from '../icons/FoodIcons';
 import { RetroClockIcon } from '../icons/RetroIcons';
 import { formatQuantity, toPersianDigits } from '../../utils/persian';
+import { normalizePersianName, suggestSubstitutes } from '../../utils/recipeEngine';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 
 interface RecipeDetailsModalProps {
@@ -28,7 +30,23 @@ export const RecipeDetailsModal: React.FC<RecipeDetailsModalProps> = ({
   inventory,
   onClose,
 }) => {
+  const [servings, setServings] = useState<number>(2);
+
   if (!recipe) return null;
+
+  // Calculate missing ingredients for substitute suggestions
+  const missingList: string[] = [];
+  recipe.ingredients.forEach((req) => {
+    const scaledQty = Math.max(1, Math.ceil(req.requiredQuantity * (servings / 2)));
+    const found = inventory.find(
+      (item) => normalizePersianName(item.name) === normalizePersianName(req.name)
+    );
+    if (!found || found.quantity < scaledQty) {
+      missingList.push(req.name);
+    }
+  });
+
+  const substitutions = suggestSubstitutes(missingList);
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -65,17 +83,35 @@ export const RecipeDetailsModal: React.FC<RecipeDetailsModalProps> = ({
                 </View>
               </View>
 
+              {/* Servings Selector */}
+              <View style={styles.servingsRow}>
+                <Text style={styles.servingsLabel}>محاسبه مواد برای تعداد نفرات:</Text>
+                <View style={styles.servingsControls}>
+                  <Pressable
+                    style={styles.servingsBtn}
+                    onPress={() => setServings((s) => Math.max(1, s - 1))}
+                  >
+                    <Text style={styles.servingsBtnText}>−</Text>
+                  </Pressable>
+                  <Text style={styles.servingsCount}>{toPersianDigits(servings)} نفر</Text>
+                  <Pressable
+                    style={styles.servingsBtn}
+                    onPress={() => setServings((s) => Math.min(12, s + 1))}
+                  >
+                    <Text style={styles.servingsBtnText}>+</Text>
+                  </Pressable>
+                </View>
+              </View>
+
               {/* Ingredients Checklist */}
-              <Text style={styles.sectionHeading}>مواد لازم برای پخت:</Text>
+              <Text style={styles.sectionHeading}>مواد لازم برای {toPersianDigits(servings)} نفر:</Text>
               <View style={styles.ingredientsBox}>
                 {recipe.ingredients.map((req, idx) => {
-                  const normalizedReq = req.name.trim().toLowerCase();
+                  const scaledRequired = Math.max(1, Math.ceil(req.requiredQuantity * (servings / 2)));
                   const found = inventory.find(
-                    (item) =>
-                      item.name.trim().toLowerCase().includes(normalizedReq) ||
-                      normalizedReq.includes(item.name.trim().toLowerCase())
+                    (item) => normalizePersianName(item.name) === normalizePersianName(req.name)
                   );
-                  const isAvailable = found && found.quantity >= req.requiredQuantity;
+                  const isAvailable = found && found.quantity >= scaledRequired;
 
                   return (
                     <View key={idx} style={styles.ingredientRow}>
@@ -90,12 +126,27 @@ export const RecipeDetailsModal: React.FC<RecipeDetailsModalProps> = ({
                         </Text>
                       </View>
                       <Text style={styles.ingredientName}>
-                        • {req.name} — {formatQuantity(req.requiredQuantity, req.unit)}
+                        • {req.name} — {formatQuantity(scaledRequired, req.unit)}
                       </Text>
                     </View>
                   );
                 })}
               </View>
+
+              {/* Substitutions Suggestion Section */}
+              {substitutions.length > 0 && (
+                <View style={styles.substitutesBox}>
+                  <Text style={styles.substitutesHeading}>💡 جایگزین‌های پیشنهادی برای کسری‌ها:</Text>
+                  {substitutions.map((sub, idx) => (
+                    <View key={idx} style={styles.substituteItem}>
+                      <Text style={styles.substituteMissing}>بجای «{sub.missing}»:</Text>
+                      <Text style={styles.substituteOptions}>
+                        {sub.substitutes.join(' یا ')}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
 
               {/* Cooking Instructions */}
               <Text style={styles.sectionHeading}>مراحل گام‌به‌گام پخت:</Text>
@@ -297,5 +348,81 @@ const styles = StyleSheet.create({
   footerRow: {
     marginTop: 4,
     marginBottom: 4,
+  },
+  servingsRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.bgLight,
+    borderWidth: BORDER.regular,
+    borderColor: COLORS.black,
+    borderRadius: BORDER.radiusSm,
+    padding: 8,
+    marginBottom: 10,
+  },
+  servingsLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.black,
+  },
+  servingsControls: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+  },
+  servingsBtn: {
+    width: 28,
+    height: 28,
+    backgroundColor: COLORS.yellow,
+    borderWidth: BORDER.regular,
+    borderColor: COLORS.black,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  servingsBtnText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.black,
+    lineHeight: 18,
+  },
+  servingsCount: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.black,
+    minWidth: 48,
+    textAlign: 'center',
+  },
+  substitutesBox: {
+    backgroundColor: '#EBF4DD',
+    borderWidth: 1.5,
+    borderColor: COLORS.black,
+    borderRadius: BORDER.radiusSm,
+    padding: 10,
+    marginBottom: 12,
+    gap: 6,
+  },
+  substitutesHeading: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#2E5016',
+    textAlign: 'right',
+    marginBottom: 2,
+  },
+  substituteItem: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  substituteMissing: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#7A221E',
+  },
+  substituteOptions: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.black,
   },
 });

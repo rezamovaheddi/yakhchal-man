@@ -4,6 +4,10 @@ import {
   checkRecipeAvailability,
   rankRecipesByAvailability,
   normalizePersianName,
+  suggestSubstitutes,
+  recipeMatchesFilter,
+  checkRecipeAvailabilityForServings,
+  getSmartRecipeSummary,
 } from '../utils/recipeEngine';
 import { Ingredient, Recipe } from '../types';
 
@@ -202,5 +206,49 @@ describe('Recipe Engine', () => {
     // 2/4 = 50%
     expect(result.percentage).toBe(50);
     expect(result.isFullyAvailable).toBe(false);
+  });
+
+  test('suggests valid substitutes for missing ingredients', () => {
+    const subs = suggestSubstitutes(['شیر', 'گوشت', 'چیزی_که_نیست']);
+    expect(subs).toHaveLength(2);
+    expect(subs[0].missing).toBe('شیر');
+    expect(subs[0].substitutes).toContain('ماست رقیق‌شده');
+    expect(subs[1].missing).toBe('گوشت');
+    expect(subs[1].substitutes).toContain('مرغ');
+  });
+
+  test('filters recipes properly by meal category', () => {
+    const omeletteResult = checkRecipeAvailability(omelette, mockInventory);
+    const kookooResult = checkRecipeAvailability(kookoo, mockInventory);
+
+    // Omelette category is 'صبحانه و عصرانه'
+    expect(recipeMatchesFilter(omeletteResult, 'صبحانه')).toBe(true);
+    expect(recipeMatchesFilter(omeletteResult, 'ناهار_شام')).toBe(false);
+
+    // Kookoo category is 'غذای سنتی'
+    expect(recipeMatchesFilter(kookooResult, 'ناهار_شام')).toBe(true);
+
+    // Economic filter (<= 3 ingredients)
+    expect(recipeMatchesFilter(omeletteResult, 'اقتصادی')).toBe(true);
+    expect(recipeMatchesFilter(kookooResult, 'اقتصادی')).toBe(true);
+  });
+
+  test('scales recipe requirements accurately for different servings', () => {
+    // omelette: 2 eggs, 2 tomatoes (base is 2 servings)
+    // for 4 servings: 4 eggs, 4 tomatoes
+    const resultFor4 = checkRecipeAvailabilityForServings(omelette, mockInventory, 4);
+    // inventory has 4 eggs and 3 tomatoes -> 4 eggs available, 3 of 4 tomatoes -> missing tomatoes
+    expect(resultFor4.isFullyAvailable).toBe(false);
+    expect(resultFor4.missingIngredients).toContain('گوجه‌فرنگی');
+
+    // for 1 serving: Math.ceil(2 * 0.5) = 1 egg, 1 tomato -> fully available
+    const resultFor1 = checkRecipeAvailabilityForServings(omelette, mockInventory, 1);
+    expect(resultFor1.isFullyAvailable).toBe(true);
+  });
+
+  test('generates smart human-readable recipe availability summary', () => {
+    const summary = getSmartRecipeSummary([omelette, kookoo], mockInventory);
+    // omelette is 100% available, kookoo is missing 2 ingredients
+    expect(summary).toContain('می‌توانی');
   });
 });
