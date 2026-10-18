@@ -35,6 +35,12 @@ function defaultFridgeData(
     catalogItems: defaultCatalog,
     selectedItemIds: [],
     homeStep: 'build_fridge',
+    antiWasteStats: {
+      monthlySavedTomans: 0,
+      monthlyWastedTomans: 0,
+      consumedItemsCount: 0,
+      wastedItemsCount: 0,
+    },
   };
 }
 

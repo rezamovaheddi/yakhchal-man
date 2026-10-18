@@ -5,6 +5,7 @@ import { RetroWindow } from '../common/RetroWindow';
 import { RetroButton } from '../common/RetroButton';
 import { FoodIconRenderer } from '../icons/FoodIcons';
 import { formatQuantity, toPersianDigits } from '../../utils/persian';
+import { getExpiryBadgeText } from '../../utils/antiWasteEngine';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 
 interface InventorySectionProps {
@@ -14,6 +15,8 @@ interface InventorySectionProps {
   onOpenAddModal: () => void;
   onEditSelection?: () => void;
   fridgeName?: string;
+  onConsumeItem?: (id: string) => void;
+  onWasteItem?: (id: string) => void;
 }
 
 export const InventorySection: React.FC<InventorySectionProps> = ({
@@ -23,6 +26,8 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
   onOpenAddModal,
   onEditSelection,
   fridgeName,
+  onConsumeItem,
+  onWasteItem,
 }) => {
   return (
     <RetroWindow
@@ -38,14 +43,45 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
         <View style={styles.grid}>
           {ingredients.map((item) => {
             const isDepleted = item.quantity <= 0;
+            const expiryInfo = getExpiryBadgeText(item.expiryDate);
+            const isExpired = expiryInfo.status === 'expired';
+            const isExpiringSoon = expiryInfo.status === 'expiring_soon';
+
             return (
               <View
                 key={item.id}
                 style={[
                   styles.itemCard,
                   isDepleted && styles.itemCardDepleted,
+                  isExpiringSoon && !isDepleted && styles.itemCardExpiring,
+                  isExpired && !isDepleted && styles.itemCardExpired,
                 ]}
               >
+                {/* Expiry Badge at Top of Card */}
+                {item.expiryDate && (
+                  <View
+                    style={[
+                      styles.expiryTag,
+                      isExpired
+                        ? styles.expiryTagExpired
+                        : isExpiringSoon
+                        ? styles.expiryTagExpiring
+                        : styles.expiryTagFresh,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.expiryTagText,
+                        isExpired && styles.expiryTagTextExpired,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {isExpired ? '⚠️ ' : isExpiringSoon ? '⏳ ' : '🌿 '}
+                      {expiryInfo.text}
+                    </Text>
+                  </View>
+                )}
+
                 {/* Card Header with Icon */}
                 <View style={styles.iconCircle}>
                   <FoodIconRenderer iconName={item.iconName} size={32} />
@@ -55,7 +91,14 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                 <Text style={styles.itemName} numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Text style={styles.itemCategory}>{item.category}</Text>
+
+                {/* Location & Category Tag */}
+                <View style={styles.metaRow}>
+                  <Text style={styles.locationTag}>
+                    📍 {item.storageLocation ?? 'یخچال'}
+                  </Text>
+                  <Text style={styles.itemCategory}>{item.category}</Text>
+                </View>
 
                 {/* Quantity indicator */}
                 <View style={styles.quantityBadge}>
@@ -96,6 +139,38 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                     <Text style={styles.counterBtnText}>-</Text>
                   </Pressable>
                 </View>
+
+                {/* Quick Consume / Waste Shortcut if expiring */}
+                {(isExpiringSoon || isExpired) && !isDepleted && (
+                  <View style={styles.cardQuickActions}>
+                    {onConsumeItem && (
+                      <Pressable
+                        onPress={() => onConsumeItem(item.id)}
+                        style={({ pressed }) => [
+                          styles.miniActionBtn,
+                          styles.miniConsumeBtn,
+                          pressed && styles.counterBtnPressed,
+                        ]}
+                      >
+                        <Text style={styles.miniActionBtnText}>مصرف ✔️</Text>
+                      </Pressable>
+                    )}
+                    {onWasteItem && (
+                      <Pressable
+                        onPress={() => onWasteItem(item.id)}
+                        style={({ pressed }) => [
+                          styles.miniActionBtn,
+                          styles.miniWasteBtn,
+                          pressed && styles.counterBtnPressed,
+                        ]}
+                      >
+                        <Text style={[styles.miniActionBtnText, styles.miniWasteBtnText]}>
+                          دورریز 🗑️
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
+                )}
               </View>
             );
           })}
@@ -252,5 +327,89 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.grayDark,
     textAlign: 'center',
+  },
+  itemCardExpiring: {
+    borderColor: COLORS.orange,
+    backgroundColor: '#FFFBF0',
+  },
+  itemCardExpired: {
+    borderColor: '#D32F2F',
+    backgroundColor: '#FFF0F0',
+  },
+  expiryTag: {
+    position: 'absolute',
+    top: -8,
+    right: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: COLORS.black,
+    zIndex: 2,
+    ...RETRO_SHADOW.sm,
+  },
+  expiryTagFresh: {
+    backgroundColor: '#E8F5E9',
+  },
+  expiryTagExpiring: {
+    backgroundColor: COLORS.yellow,
+  },
+  expiryTagExpired: {
+    backgroundColor: '#FFCDD2',
+  },
+  expiryTagText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: COLORS.black,
+  },
+  expiryTagTextExpired: {
+    color: '#B71C1C',
+  },
+  metaRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  locationTag: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.black,
+    backgroundColor: COLORS.cream,
+    paddingVertical: 1,
+    paddingHorizontal: 4,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: COLORS.black,
+  },
+  cardQuickActions: {
+    flexDirection: 'row-reverse',
+    gap: 4,
+    marginTop: 8,
+    width: '100%',
+  },
+  miniActionBtn: {
+    flex: 1,
+    paddingVertical: 3,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: COLORS.black,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...RETRO_SHADOW.sm,
+  },
+  miniConsumeBtn: {
+    backgroundColor: '#C8E6C9',
+  },
+  miniWasteBtn: {
+    backgroundColor: '#FFCCBC',
+  },
+  miniActionBtnText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.black,
+  },
+  miniWasteBtnText: {
+    color: '#B71C1C',
   },
 });

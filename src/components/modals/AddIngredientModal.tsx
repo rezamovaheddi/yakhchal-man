@@ -8,11 +8,12 @@ import {
   ScrollView,
   Pressable,
 } from 'react-native';
-import { Ingredient, IngredientCategory, IngredientUnit } from '../../types';
+import { Ingredient, IngredientCategory, IngredientUnit, StorageLocation } from '../../types';
 import { RetroWindow } from '../common/RetroWindow';
 import { RetroInput } from '../common/RetroInput';
 import { RetroButton } from '../common/RetroButton';
 import { FoodIconRenderer } from '../icons/FoodIcons';
+import { getFutureDateString, DEFAULT_INGREDIENT_PRICES } from '../../utils/antiWasteEngine';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 
 interface AddIngredientModalProps {
@@ -43,6 +44,7 @@ const CATEGORIES: IngredientCategory[] = [
   'ادویه و چاشنی',
   'سایر',
 ];
+const LOCATIONS: StorageLocation[] = ['یخچال', 'فریزر', 'کابینت'];
 
 export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
   visible,
@@ -53,6 +55,9 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState<IngredientUnit>('عدد');
   const [category, setCategory] = useState<IngredientCategory>('سبزیجات');
+  const [storageLocation, setStorageLocation] = useState<StorageLocation>('یخچال');
+  const [daysToExpiry, setDaysToExpiry] = useState('5');
+  const [estimatedPrice, setEstimatedPrice] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('tomato');
   const [error, setError] = useState('');
 
@@ -67,17 +72,32 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
       return;
     }
 
+    const parsedDays = parseInt(daysToExpiry, 10);
+    const expiryDate = !isNaN(parsedDays)
+      ? getFutureDateString(parsedDays)
+      : getFutureDateString(5);
+
+    const parsedPrice = parseInt(estimatedPrice, 10);
+    const finalPrice = !isNaN(parsedPrice) && parsedPrice > 0
+      ? parsedPrice
+      : (DEFAULT_INGREDIENT_PRICES[name.trim()] ?? 25000);
+
     onAdd({
       name: name.trim(),
       quantity: parsedQty,
       unit,
       category,
       iconName: selectedIcon,
+      storageLocation,
+      expiryDate,
+      estimatedPrice: finalPrice,
     });
 
     // Reset and close
     setName('');
     setQuantity('1');
+    setDaysToExpiry('5');
+    setEstimatedPrice('');
     setError('');
     onClose();
   };
@@ -138,6 +158,52 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
                     </Text>
                   </Pressable>
                 ))}
+              </View>
+
+              {/* Storage Location selection */}
+              <Text style={styles.sectionLabel}>محل نگهداری:</Text>
+              <View style={styles.chipsRow}>
+                {LOCATIONS.map((loc) => (
+                  <Pressable
+                    key={loc}
+                    onPress={() => setStorageLocation(loc)}
+                    style={[
+                      styles.chip,
+                      storageLocation === loc && styles.chipActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        storageLocation === loc && styles.chipTextActive,
+                      ]}
+                    >
+                      {loc === 'یخچال' ? '❄️ یخچال' : loc === 'فریزر' ? '🧊 فریزر' : '🚪 کابینت'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Shelf-life & Price row */}
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                  <RetroInput
+                    label="ماندگاری (روز):"
+                    value={daysToExpiry}
+                    onChangeText={setDaysToExpiry}
+                    keyboardType="numeric"
+                    placeholder="۵"
+                  />
+                </View>
+                <View style={{ flex: 1.2 }}>
+                  <RetroInput
+                    label="ارزش تقریبی (تومان):"
+                    value={estimatedPrice}
+                    onChangeText={setEstimatedPrice}
+                    keyboardType="numeric"
+                    placeholder="مثلاً ۲۵۰۰۰"
+                  />
+                </View>
               </View>
 
               {/* Category selection */}

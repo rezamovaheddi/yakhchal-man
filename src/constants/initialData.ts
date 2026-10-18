@@ -8,6 +8,9 @@ export const INITIAL_INGREDIENTS: Ingredient[] = [
     unit: 'عدد',
     category: 'پروتئین',
     iconName: 'egg',
+    storageLocation: 'یخچال',
+    expiryDate: new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0],
+    estimatedPrice: 6000,
   },
   {
     id: 'ing-2',
@@ -16,6 +19,9 @@ export const INITIAL_INGREDIENTS: Ingredient[] = [
     unit: 'عدد',
     category: 'سبزیجات',
     iconName: 'tomato',
+    storageLocation: 'یخچال',
+    expiryDate: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0], // 2 days -> expiring soon!
+    estimatedPrice: 25000,
   },
   {
     id: 'ing-3',
@@ -24,6 +30,9 @@ export const INITIAL_INGREDIENTS: Ingredient[] = [
     unit: 'عدد',
     category: 'سبزیجات',
     iconName: 'potato',
+    storageLocation: 'کابینت',
+    expiryDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+    estimatedPrice: 20000,
   },
   {
     id: 'ing-4',
@@ -32,6 +41,9 @@ export const INITIAL_INGREDIENTS: Ingredient[] = [
     unit: 'بسته',
     category: 'لبنیات',
     iconName: 'cheese',
+    storageLocation: 'یخچال',
+    expiryDate: new Date(Date.now() + 6 * 86400000).toISOString().split('T')[0],
+    estimatedPrice: 65000,
   },
   {
     id: 'ing-5',
@@ -40,6 +52,9 @@ export const INITIAL_INGREDIENTS: Ingredient[] = [
     unit: 'لیتر',
     category: 'لبنیات',
     iconName: 'milk',
+    storageLocation: 'یخچال',
+    expiryDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0], // 3 days -> expiring soon!
+    estimatedPrice: 38000,
   },
   {
     id: 'ing-6',
@@ -48,6 +63,9 @@ export const INITIAL_INGREDIENTS: Ingredient[] = [
     unit: 'عدد',
     category: 'سبزیجات',
     iconName: 'onion',
+    storageLocation: 'کابینت',
+    expiryDate: new Date(Date.now() + 12 * 86400000).toISOString().split('T')[0],
+    estimatedPrice: 22000,
   },
 ];
 
@@ -255,16 +273,16 @@ export const RECIPES: Recipe[] = [
 ];
 
 export const CATALOG_INGREDIENTS: Omit<Ingredient, 'id'>[] = [
-  { name: 'تخم‌مرغ', quantity: 4, unit: 'عدد', category: 'پروتئین', iconName: 'egg' },
-  { name: 'گوجه‌فرنگی', quantity: 3, unit: 'عدد', category: 'سبزیجات', iconName: 'tomato' },
-  { name: 'سیب‌زمینی', quantity: 3, unit: 'عدد', category: 'سبزیجات', iconName: 'potato' },
-  { name: 'پیاز', quantity: 2, unit: 'عدد', category: 'سبزیجات', iconName: 'onion' },
-  { name: 'پنیر', quantity: 1, unit: 'بسته', category: 'لبنیات', iconName: 'cheese' },
-  { name: 'شیر', quantity: 1, unit: 'لیتر', category: 'لبنیات', iconName: 'milk' },
-  { name: 'سیر', quantity: 3, unit: 'حبه', category: 'سبزیجات', iconName: 'garlic' },
-  { name: 'هویج', quantity: 2, unit: 'عدد', category: 'سبزیجات', iconName: 'carrot' },
-  { name: 'قارچ', quantity: 1, unit: 'بسته', category: 'سبزیجات', iconName: 'mushroom' },
-  { name: 'مرغ و گوشت', quantity: 1, unit: 'بسته', category: 'پروتئین', iconName: 'chicken' },
-  { name: 'کره', quantity: 1, unit: 'بسته', category: 'لبنیات', iconName: 'butter' },
-  { name: 'نان', quantity: 2, unit: 'عدد', category: 'سایر', iconName: 'bread' },
+  { name: 'تخم‌مرغ', quantity: 4, unit: 'عدد', category: 'پروتئین', iconName: 'egg', storageLocation: 'یخچال', estimatedPrice: 6000, expiryDate: new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0] },
+  { name: 'گوجه‌فرنگی', quantity: 3, unit: 'عدد', category: 'سبزیجات', iconName: 'tomato', storageLocation: 'یخچال', estimatedPrice: 25000, expiryDate: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0] },
+  { name: 'سیب‌زمینی', quantity: 3, unit: 'عدد', category: 'سبزیجات', iconName: 'potato', storageLocation: 'کابینت', estimatedPrice: 20000, expiryDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0] },
+  { name: 'پیاز', quantity: 2, unit: 'عدد', category: 'سبزیجات', iconName: 'onion', storageLocation: 'کابینت', estimatedPrice: 22000, expiryDate: new Date(Date.now() + 12 * 86400000).toISOString().split('T')[0] },
+  { name: 'پنیر', quantity: 1, unit: 'بسته', category: 'لبنیات', iconName: 'cheese', storageLocation: 'یخچال', estimatedPrice: 65000, expiryDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
+  { name: 'شیر', quantity: 1, unit: 'لیتر', category: 'لبنیات', iconName: 'milk', storageLocation: 'یخچال', estimatedPrice: 38000, expiryDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
+  { name: 'سیر', quantity: 3, unit: 'حبه', category: 'سبزیجات', iconName: 'garlic', storageLocation: 'کابینت', estimatedPrice: 15000, expiryDate: new Date(Date.now() + 20 * 86400000).toISOString().split('T')[0] },
+  { name: 'هویج', quantity: 2, unit: 'عدد', category: 'سبزیجات', iconName: 'carrot', storageLocation: 'یخچال', estimatedPrice: 18000, expiryDate: new Date(Date.now() + 9 * 86400000).toISOString().split('T')[0] },
+  { name: 'قارچ', quantity: 1, unit: 'بسته', category: 'سبزیجات', iconName: 'mushroom', storageLocation: 'یخچال', estimatedPrice: 75000, expiryDate: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0] },
+  { name: 'مرغ و گوشت', quantity: 1, unit: 'بسته', category: 'پروتئین', iconName: 'chicken', storageLocation: 'فریزر', estimatedPrice: 190000, expiryDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] },
+  { name: 'کره', quantity: 1, unit: 'بسته', category: 'لبنیات', iconName: 'butter', storageLocation: 'یخچال', estimatedPrice: 45000, expiryDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0] },
+  { name: 'نان', quantity: 2, unit: 'عدد', category: 'سایر', iconName: 'bread', storageLocation: 'فریزر', estimatedPrice: 10000, expiryDate: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0] },
 ];

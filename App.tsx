@@ -24,6 +24,7 @@ import {
   UserAccount,
   AppReleaseInfo,
   UpdateCheckState,
+  WasteTrackingStats,
 } from './src/types';
 import { RECIPES, CATALOG_INGREDIENTS } from './src/constants/initialData';
 import { COLORS, BORDER, RETRO_SHADOW } from './src/constants/theme';
@@ -96,6 +97,12 @@ function MainApp() {
   const [catalogItems, setCatalogItems] = useState<Ingredient[]>(INITIAL_CATALOG);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [antiWasteStats, setAntiWasteStats] = useState<WasteTrackingStats>({
+    monthlySavedTomans: 0,
+    monthlyWastedTomans: 0,
+    consumedItemsCount: 0,
+    wastedItemsCount: 0,
+  });
 
   // ── Navigation / UI ───────────────────────────────────────────────────────
   const [currentTab, setCurrentTab] = useState<TabType>('home');
@@ -155,6 +162,16 @@ function MainApp() {
       setHomeStep(s.homeStep);
       setIsFridgeCreated(s.isFridgeCreated);
       setRecommendedRecipeIndex(0);
+      if (data.antiWasteStats) {
+        setAntiWasteStats(data.antiWasteStats);
+      } else {
+        setAntiWasteStats({
+          monthlySavedTomans: 0,
+          monthlyWastedTomans: 0,
+          consumedItemsCount: 0,
+          wastedItemsCount: 0,
+        });
+      }
 
       // Allow auto-saves on the next tick (after React flushes state updates)
       requestAnimationFrame(() => {
@@ -241,8 +258,9 @@ function MainApp() {
       catalogItems,
       selectedItemIds: Array.from(selectedItemIds),
       homeStep,
+      antiWasteStats,
     }, defaultFridgeName(currentUser));
-  }, [fridgeName, ingredients, catalogItems, selectedItemIds, homeStep, currentUser, persistFridgeData]);
+  }, [fridgeName, ingredients, catalogItems, selectedItemIds, homeStep, antiWasteStats, currentUser, persistFridgeData]);
 
   // ── Auth handlers ─────────────────────────────────────────────────────────
   const handleAuthSuccess = useCallback(
@@ -389,6 +407,57 @@ function MainApp() {
     [showToast]
   );
 
+  // ── Anti-Waste action handlers ────────────────────────────────────────────
+  const handleConsumeItem = useCallback(
+    (id: string) => {
+      const item = ingredients.find((i) => i.id === id);
+      if (!item) return;
+
+      const price = item.estimatedPrice ?? 25000;
+      const savedAmount = price * (item.quantity > 0 ? 1 : 0);
+
+      // Decrement or mark consumed
+      if (item.quantity <= 1) {
+        setIngredients((prev) => prev.filter((i) => i.id !== id));
+      } else {
+        setIngredients((prev) =>
+          prev.map((i) => (i.id === id ? { ...i, quantity: i.quantity - 1 } : i))
+        );
+      }
+
+      setAntiWasteStats((prev) => ({
+        ...prev,
+        monthlySavedTomans: prev.monthlySavedTomans + savedAmount,
+        consumedItemsCount: prev.consumedItemsCount + 1,
+      }));
+
+      showToast(`«${item.name}» به‌موقع مصرف شد! ${price.toLocaleString('fa-IR')} تومان صرفه‌جویی شد 🌱`, 'success');
+    },
+    [ingredients, showToast]
+  );
+
+  const handleWasteItem = useCallback(
+    (id: string) => {
+      const item = ingredients.find((i) => i.id === id);
+      if (!item) return;
+
+      const price = item.estimatedPrice ?? 25000;
+      const lostAmount = price * item.quantity;
+
+      // Remove from fridge inventory
+      setIngredients((prev) => prev.filter((i) => i.id !== id));
+
+      setAntiWasteStats((prev) => ({
+        ...prev,
+        monthlyWastedTomans: prev.monthlyWastedTomans + lostAmount,
+        wastedItemsCount: prev.wastedItemsCount + 1,
+      }));
+
+      showToast(`«${item.name}» به عنوان دورریز ثبت شد 🗑️`, 'warning');
+    },
+    [ingredients, showToast]
+  );
+
   // ── Recipe suggestions ────────────────────────────────────────────────────
   const rankedRecipes = rankRecipesByScore(RECIPES, ingredients);
   const currentRecommendation =
@@ -445,6 +514,10 @@ function MainApp() {
             onOpenProfile={() => setIsProfileModalOpen(true)}
             onCheckUpdates={handleCheckForUpdates}
             hasUpdate={hasAvailableUpdate}
+            antiWasteStats={antiWasteStats}
+            onConsumeItem={handleConsumeItem}
+            onWasteItem={handleWasteItem}
+            onNavigateToCooking={() => setCurrentTab('cooking')}
           />
         )}
 

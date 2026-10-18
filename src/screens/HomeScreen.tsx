@@ -1,12 +1,14 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Text, Pressable } from 'react-native';
-import { Ingredient, Recipe, UserAccount } from '../types';
+import { Ingredient, Recipe, UserAccount, WasteTrackingStats } from '../types';
 import { HeaderBar } from '../components/home/HeaderBar';
 import { StepWizardBar, HomeStep } from '../components/home/StepWizardBar';
 import { FridgeCreationStep } from '../components/home/FridgeCreationStep';
 import { ItemSelectionStep } from '../components/home/ItemSelectionStep';
 import { FeaturedRecipeCard } from '../components/home/FeaturedRecipeCard';
 import { InventorySection } from '../components/home/InventorySection';
+import { UrgentIngredientsSection } from '../components/antiwaste/UrgentIngredientsSection';
+import { WasteSavingsCard } from '../components/antiwaste/WasteSavingsCard';
 import { RecipeAvailabilityResult, getSmartRecipeSummary } from '../utils/recipeEngine';
 import { RECIPES } from '../constants/initialData';
 import { COLORS, BORDER, RETRO_SHADOW } from '../constants/theme';
@@ -40,6 +42,10 @@ interface HomeScreenProps {
   onOpenProfile: () => void;
   onCheckUpdates?: () => void;
   hasUpdate?: boolean;
+  antiWasteStats?: WasteTrackingStats;
+  onConsumeItem?: (id: string) => void;
+  onWasteItem?: (id: string) => void;
+  onNavigateToCooking?: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -70,6 +76,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenProfile,
   onCheckUpdates,
   hasUpdate,
+  antiWasteStats,
+  onConsumeItem,
+  onWasteItem,
+  onNavigateToCooking,
 }) => {
   return (
     <ScrollView
@@ -156,14 +166,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </Text>
           </View>
 
-          {/* Part A: Suggested Recipe based on Selected Items */}
+          {/* Smart Anti-Waste: Urgent Shelf ("اول این مواد را مصرف کن") */}
+          <UrgentIngredientsSection
+            inventory={ingredients}
+            onConsumeItem={onConsumeItem ?? (() => {})}
+            onWasteItem={onWasteItem ?? (() => {})}
+            onCookWithUrgent={onNavigateToCooking ?? (() => {})}
+          />
+
+          {/* Smart Anti-Waste: Monthly Savings & Waste Calculator */}
+          <WasteSavingsCard stats={antiWasteStats} />
+
+          {/* Part A: Suggested Recipe based on Selected Items & Expiring Foods */}
           <FeaturedRecipeCard
             availabilityResult={currentRecommendation}
             onNextRecipe={onNextRecipe}
             onViewInstructions={onViewInstructions}
           />
 
-          {/* Part B: Display Item List right there on the same screen */}
+          {/* Part B: Display Item List with Location & Expiry Badges */}
           <InventorySection
             ingredients={ingredients}
             onIncrement={onIncrementIngredient}
@@ -171,6 +192,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             onOpenAddModal={onOpenAddModal}
             onEditSelection={() => onSelectStep('select_items')}
             fridgeName={fridgeName}
+            onConsumeItem={onConsumeItem}
+            onWasteItem={onWasteItem}
           />
         </View>
       )}

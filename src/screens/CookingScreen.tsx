@@ -12,6 +12,7 @@ import {
   MealFilter,
   recipeMatchesFilter,
   suggestSubstitutes,
+  countExpiringIngredientsInRecipe,
 } from '../utils/recipeEngine';
 import { toPersianDigits } from '../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../constants/theme';
@@ -170,6 +171,12 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
                           <RetroBadge
                             label="فقط ۱ کسری!"
                             color={COLORS.yellow}
+                          />
+                        ) : null}
+                        {countExpiringIngredientsInRecipe(recipe, inventory) > 0 ? (
+                          <RetroBadge
+                            label={`🚨 نجات ${toPersianDigits(countExpiringIngredientsInRecipe(recipe, inventory))} قلم در معرض انقضا`}
+                            color="#FFCCBC"
                           />
                         ) : null}
                       </View>

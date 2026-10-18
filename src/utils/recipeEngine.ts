@@ -238,21 +238,60 @@ function parsePrepMinutes(prepTime: string): number | null {
 }
 
 /**
- * Composite score used to rank recipes.
- * Formula: availability_pct + difficulty_bonus - prep_penalty
- * prep_penalty = clamp(minutes / 5, 0, 10) so a 30-min recipe loses 6 points.
+ * Calculates how many ingredients in the recipe are close to expiring (<= 3 days) in the user's inventory.
  */
-export function compositeScore(result: RecipeAvailabilityResult): number {
+export function countExpiringIngredientsInRecipe(
+  recipe: Recipe,
+  inventory: Ingredient[],
+  referenceDate: Date = new Date()
+): number {
+  const refMidnight = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate()).getTime();
+
+  // Find all items in inventory expiring in <= 3 days
+  const expiringNames = new Set<string>();
+  for (const item of inventory) {
+    if (item.quantity <= 0 || item.isConsumed || !item.expiryDate) continue;
+    const target = new Date(item.expiryDate);
+    if (isNaN(target.getTime())) continue;
+    const targetMidnight = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
+    const diffDays = Math.round((targetMidnight - refMidnight) / 86400000);
+    if (diffDays <= 3) {
+      expiringNames.add(normalizePersianName(item.name));
+    }
+  }
+
+  let count = 0;
+  for (const req of recipe.ingredients) {
+    if (expiringNames.has(normalizePersianName(req.name))) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+/**
+ * Composite score used to rank recipes.
+ * Formula: availability_pct + readiness_bonus + difficulty_bonus - prep_penalty + expiry_urgency_bonus
+ * Expiry urgency gives 30 bonus points per expiring ingredient used, prioritizing recipes that prevent food waste.
+ */
+export function compositeScore(
+  result: RecipeAvailabilityResult,
+  inventory: Ingredient[] = []
+): number {
   const diffBonus = DIFFICULTY_BONUS[result.recipe.difficulty] ?? 0;
   const minutes = parsePrepMinutes(result.recipe.prepTime);
   const prepPenalty = minutes != null ? Math.min(10, minutes / 5) : 5;
   // If fully available, add a big bonus to prioritize ready-to-cook recipes
   const readyBonus = result.isFullyAvailable ? 50 : 0;
-  return result.percentage + readyBonus + diffBonus - prepPenalty;
+  // Urgency bonus: rescuing food about to expire
+  const expiringCount = inventory.length > 0 ? countExpiringIngredientsInRecipe(result.recipe, inventory) : 0;
+  const expiryBonus = expiringCount * 30;
+
+  return result.percentage + readyBonus + diffBonus - prepPenalty + expiryBonus;
 }
 
 /**
- * Ranks recipes by composite score (availability + readiness + ease + speed).
+ * Ranks recipes by composite score (availability + readiness + ease + speed + anti-waste urgency).
  */
 export const rankRecipesByScore = (
   recipes: Recipe[],
@@ -260,7 +299,7 @@ export const rankRecipesByScore = (
 ): RecipeAvailabilityResult[] =>
   recipes
     .map((recipe) => checkRecipeAvailability(recipe, inventory))
-    .sort((a, b) => compositeScore(b) - compositeScore(a));
+    .sort((a, b) => compositeScore(b, inventory) - compositeScore(a, inventory));
 
 // ---------------------------------------------------------------------------
 // Category / meal-time filter
