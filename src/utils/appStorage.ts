@@ -1,180 +1,170 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ingredient } from '../types';
+import { FridgeData, Ingredient } from '../types';
 
-const STORAGE_INVENTORY_KEY = '@yakhchal_inventory';
-const STORAGE_FRIDGE_NAME_KEY = '@yakhchal_fridge_name';
-const STORAGE_HOME_STEP_KEY = '@yakhchal_home_step';
-const STORAGE_SELECTED_IDS_KEY = '@yakhchal_selected_ids';
-const STORAGE_CATALOG_ITEMS_KEY = '@yakhchal_catalog_items';
+// ---------------------------------------------------------------------------
+// Key helpers — all data is namespaced by userId
+// ---------------------------------------------------------------------------
+// Layout:  @yakhchal_fridge/<userId>
+//
+// A single JSON blob per user stores everything that belongs to their fridge.
+// Keeping it as one key means we can atomically load and save the full
+// profile, making switch-user operations safe and simple.
+// ---------------------------------------------------------------------------
 
-export interface PersistedAppState {
-  inventory: Ingredient[];
-  fridgeName: string;
-  homeStep: string;
-  selectedItemIds: string[];
-  catalogItems: Ingredient[];
+const FRIDGE_KEY = (userId: string) => `@yakhchal_fridge/${userId}`;
+
+// Legacy global keys (pre-isolation).  Used only for the one-time migration.
+const LEGACY_KEYS = [
+  '@yakhchal_inventory',
+  '@yakhchal_fridge_name',
+  '@yakhchal_home_step',
+  '@yakhchal_selected_ids',
+  '@yakhchal_catalog_items',
+];
+
+// ---------------------------------------------------------------------------
+// Default fridge data factory
+// ---------------------------------------------------------------------------
+function defaultFridgeData(
+  fridgeName: string,
+  defaultCatalog: Ingredient[]
+): FridgeData {
+  return {
+    fridgeName,
+    inventory: [],
+    catalogItems: defaultCatalog,
+    selectedItemIds: [],
+    homeStep: 'build_fridge',
+  };
 }
 
-/**
- * Persistent storage layer for app state.
- * This keeps fridge inventory, settings, and setup wizard progress
- * across app restarts.
- */
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 export const appStorage = {
   /**
-   * Saves the full inventory list to persistent storage.
+   * Loads the fridge data for a specific user.
+   * Falls back to default values when no data has been saved yet.
+   *
+   * Also performs a one-time migration from the legacy global keys
+   * (from before per-user isolation was introduced).
    */
-  async saveInventory(items: Ingredient[]): Promise<void> {
+  async loadFridgeData(
+    userId: string,
+    defaultFridgeName: string,
+    defaultCatalog: Ingredient[]
+  ): Promise<FridgeData> {
     try {
-      await AsyncStorage.setItem(STORAGE_INVENTORY_KEY, JSON.stringify(items));
+      const raw = await AsyncStorage.getItem(FRIDGE_KEY(userId));
+      if (raw) {
+        return JSON.parse(raw) as FridgeData;
+      }
+
+      // ── One-time migration from legacy global keys ──────────────────────
+      // If there is no per-user record yet, check whether the old global
+      // keys hold data (written by an earlier version of the app).  If so,
+      // adopt that data for this user and immediately erase the global keys
+      // so we never migrate again and don't leak data to future new users.
+      const legacyData = await this._readLegacyKeys(defaultFridgeName, defaultCatalog);
+      if (legacyData) {
+        await this.saveFridgeData(userId, legacyData);
+        await AsyncStorage.multiRemove(LEGACY_KEYS);
+        return legacyData;
+      }
+      // ────────────────────────────────────────────────────────────────────
+
+      return defaultFridgeData(defaultFridgeName, defaultCatalog);
     } catch (e) {
-      console.warn('[appStorage] Error saving inventory:', e);
+      console.warn(`[appStorage] Error loading fridge data for ${userId}:`, e);
+      return defaultFridgeData(defaultFridgeName, defaultCatalog);
     }
   },
 
   /**
-   * Loads the inventory list from persistent storage.
+   * Atomically saves the full fridge data for a user.
    */
-  async loadInventory(): Promise<Ingredient[]> {
+  async saveFridgeData(userId: string, data: FridgeData): Promise<void> {
     try {
-      const data = await AsyncStorage.getItem(STORAGE_INVENTORY_KEY);
-      return data ? (JSON.parse(data) as Ingredient[]) : [];
+      await AsyncStorage.setItem(FRIDGE_KEY(userId), JSON.stringify(data));
     } catch (e) {
-      console.warn('[appStorage] Error loading inventory:', e);
-      return [];
+      console.warn(`[appStorage] Error saving fridge data for ${userId}:`, e);
     }
   },
 
   /**
-   * Saves the fridge name.
+   * Partially updates the stored fridge data for a user.
+   * Performs a read-modify-write; only the provided fields are overwritten.
    */
-  async saveFridgeName(name: string): Promise<void> {
+  async patchFridgeData(
+    userId: string,
+    patch: Partial<FridgeData>,
+    defaultFridgeName: string,
+    defaultCatalog: Ingredient[]
+  ): Promise<void> {
     try {
-      await AsyncStorage.setItem(STORAGE_FRIDGE_NAME_KEY, name);
+      const current = await this.loadFridgeData(userId, defaultFridgeName, defaultCatalog);
+      await this.saveFridgeData(userId, { ...current, ...patch });
     } catch (e) {
-      console.warn('[appStorage] Error saving fridge name:', e);
+      console.warn(`[appStorage] Error patching fridge data for ${userId}:`, e);
     }
   },
 
   /**
-   * Loads the fridge name, falling back to the given default.
+   * Clears the fridge data for a specific user (e.g. on fridge reset).
+   * Resets to an empty fridge; does not delete the key itself.
    */
-  async loadFridgeName(defaultName: string): Promise<string> {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_FRIDGE_NAME_KEY);
-      return data ?? defaultName;
-    } catch (e) {
-      console.warn('[appStorage] Error loading fridge name:', e);
-      return defaultName;
-    }
+  async clearFridgeData(
+    userId: string,
+    defaultFridgeName: string,
+    defaultCatalog: Ingredient[]
+  ): Promise<void> {
+    await this.saveFridgeData(
+      userId,
+      defaultFridgeData(defaultFridgeName, defaultCatalog)
+    );
   },
 
   /**
-   * Saves the current setup-wizard step.
+   * Removes the fridge data record entirely for a user.
+   * Use this when a profile is deleted (future feature).
    */
-  async saveHomeStep(step: string): Promise<void> {
+  async deleteFridgeData(userId: string): Promise<void> {
     try {
-      await AsyncStorage.setItem(STORAGE_HOME_STEP_KEY, step);
+      await AsyncStorage.removeItem(FRIDGE_KEY(userId));
     } catch (e) {
-      console.warn('[appStorage] Error saving home step:', e);
+      console.warn(`[appStorage] Error deleting fridge data for ${userId}:`, e);
     }
   },
 
+  // ── Internal / migration helpers ─────────────────────────────────────────
+
   /**
-   * Loads the last saved setup-wizard step.
+   * Reads the old global storage keys and returns a `FridgeData` object if
+   * any legacy data exists, or `null` if the keys are empty / absent.
+   * @internal
    */
-  async loadHomeStep(): Promise<string | null> {
+  async _readLegacyKeys(
+    defaultFridgeName: string,
+    defaultCatalog: Ingredient[]
+  ): Promise<FridgeData | null> {
     try {
-      return await AsyncStorage.getItem(STORAGE_HOME_STEP_KEY);
-    } catch (e) {
-      console.warn('[appStorage] Error loading home step:', e);
+      const [inventory, fridgeName, homeStep, selectedIds, catalog] =
+        await AsyncStorage.multiGet(LEGACY_KEYS);
+
+      const hasAny =
+        inventory[1] || fridgeName[1] || homeStep[1] || selectedIds[1] || catalog[1];
+      if (!hasAny) return null;
+
+      return {
+        inventory: inventory[1] ? (JSON.parse(inventory[1]) as Ingredient[]) : [],
+        fridgeName: fridgeName[1] ?? defaultFridgeName,
+        homeStep: homeStep[1] ?? 'build_fridge',
+        selectedItemIds: selectedIds[1] ? (JSON.parse(selectedIds[1]) as string[]) : [],
+        catalogItems: catalog[1] ? (JSON.parse(catalog[1]) as Ingredient[]) : defaultCatalog,
+      };
+    } catch {
       return null;
-    }
-  },
-
-  /**
-   * Saves the set of selected catalog item IDs (as array).
-   */
-  async saveSelectedItemIds(ids: string[]): Promise<void> {
-    try {
-      await AsyncStorage.setItem(STORAGE_SELECTED_IDS_KEY, JSON.stringify(ids));
-    } catch (e) {
-      console.warn('[appStorage] Error saving selected item IDs:', e);
-    }
-  },
-
-  /**
-   * Loads selected catalog item IDs.
-   */
-  async loadSelectedItemIds(): Promise<string[]> {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_SELECTED_IDS_KEY);
-      return data ? (JSON.parse(data) as string[]) : [];
-    } catch (e) {
-      console.warn('[appStorage] Error loading selected item IDs:', e);
-      return [];
-    }
-  },
-
-  /**
-   * Saves the full catalog items list (including custom additions and quantity edits).
-   */
-  async saveCatalogItems(items: Ingredient[]): Promise<void> {
-    try {
-      await AsyncStorage.setItem(STORAGE_CATALOG_ITEMS_KEY, JSON.stringify(items));
-    } catch (e) {
-      console.warn('[appStorage] Error saving catalog items:', e);
-    }
-  },
-
-  /**
-   * Loads catalog items. Returns null if not yet persisted (use default catalog).
-   */
-  async loadCatalogItems(): Promise<Ingredient[] | null> {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_CATALOG_ITEMS_KEY);
-      return data ? (JSON.parse(data) as Ingredient[]) : null;
-    } catch (e) {
-      console.warn('[appStorage] Error loading catalog items:', e);
-      return null;
-    }
-  },
-
-  /**
-   * Loads all persisted state in one call for app startup.
-   */
-  async loadAll(defaultFridgeName: string, defaultCatalog: Ingredient[]): Promise<PersistedAppState> {
-    const [inventory, fridgeName, homeStep, selectedItemIds, catalogItems] = await Promise.all([
-      this.loadInventory(),
-      this.loadFridgeName(defaultFridgeName),
-      this.loadHomeStep(),
-      this.loadSelectedItemIds(),
-      this.loadCatalogItems(),
-    ]);
-
-    return {
-      inventory,
-      fridgeName,
-      homeStep: homeStep ?? 'build_fridge',
-      selectedItemIds,
-      catalogItems: catalogItems ?? defaultCatalog,
-    };
-  },
-
-  /**
-   * Clears all app state (e.g. when resetting the fridge).
-   */
-  async clearAll(): Promise<void> {
-    try {
-      await AsyncStorage.multiRemove([
-        STORAGE_INVENTORY_KEY,
-        STORAGE_FRIDGE_NAME_KEY,
-        STORAGE_HOME_STEP_KEY,
-        STORAGE_SELECTED_IDS_KEY,
-        STORAGE_CATALOG_ITEMS_KEY,
-      ]);
-    } catch (e) {
-      console.warn('[appStorage] Error clearing app state:', e);
     }
   },
 };

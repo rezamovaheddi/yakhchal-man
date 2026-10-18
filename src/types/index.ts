@@ -48,3 +48,21 @@ export interface UserAccount {
   createdAt: string;
   fridgeName?: string;
 }
+
+/**
+ * All fridge-specific data that belongs to a single user/profile.
+ * Stored under a per-user key so profiles never share inventory.
+ */
+export interface FridgeData {
+  /** User-visible fridge name */
+  fridgeName: string;
+  /** Current fridge inventory */
+  inventory: Ingredient[];
+  /** Catalog with user edits (quantities, custom items) */
+  catalogItems: Ingredient[];
+  /** IDs of items selected in the setup wizard */
+  selectedItemIds: string[];
+  /** Last saved wizard step */
+  homeStep: string;
+}
+
