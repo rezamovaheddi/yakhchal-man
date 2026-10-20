@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { RetroWindow } from '../common/RetroWindow';
 import { RetroInput } from '../common/RetroInput';
 import { RetroButton } from '../common/RetroButton';
-import { FridgeLogoIcon } from '../icons/RetroIcons';
+import { FridgeLogoIcon, RetroCheckCircleIcon } from '../icons/RetroIcons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 
 interface FridgeCreationStepProps {
@@ -13,17 +14,48 @@ interface FridgeCreationStepProps {
   isAlreadyCreated?: boolean;
 }
 
-const PRESET_NAMES = [
-  'یخچال خونه ما 🏠',
-  'یخچال مجردی 🍕',
-  'یخچال محل کار 🏢',
-  'یخچال هوشمند ❄️',
+const PRESET_NAMES: Array<{
+  label: string;
+  icon: (color: string) => React.ReactNode;
+}> = [
+  {
+    label: 'یخچال خونه ما',
+    icon: (color) => <Ionicons name="home-outline" size={13} color={color} />,
+  },
+  {
+    label: 'یخچال مجردی',
+    icon: (color) => <Ionicons name="pizza-outline" size={13} color={color} />,
+  },
+  {
+    label: 'یخچال محل کار',
+    icon: (color) => <Ionicons name="business-outline" size={13} color={color} />,
+  },
+  {
+    label: 'یخچال هوشمند',
+    icon: (color) => <Ionicons name="sparkles-outline" size={13} color={color} />,
+  },
 ];
 
-const FRIDGE_MODELS = [
-  { id: 'classic', label: 'رترو کلاسیک ❄️' },
-  { id: 'side', label: 'ساید بای ساید 🧊' },
-  { id: 'mini', label: 'مینی‌بار نقلی 🥛' },
+const FRIDGE_MODELS: Array<{
+  id: string;
+  label: string;
+  icon: (color: string) => React.ReactNode;
+}> = [
+  {
+    id: 'classic',
+    label: 'رترو کلاسیک',
+    icon: (color) => <MaterialCommunityIcons name="fridge-outline" size={15} color={color} />,
+  },
+  {
+    id: 'side',
+    label: 'ساید بای ساید',
+    icon: (color) => <MaterialCommunityIcons name="fridge" size={15} color={color} />,
+  },
+  {
+    id: 'mini',
+    label: 'مینی‌بار نقلی',
+    icon: (color) => <MaterialCommunityIcons name="fridge-bottom" size={15} color={color} />,
+  },
 ];
 
 export const FridgeCreationStep: React.FC<FridgeCreationStepProps> = ({
@@ -87,13 +119,13 @@ export const FridgeCreationStep: React.FC<FridgeCreationStepProps> = ({
           <Text style={styles.presetsLabel}>انتخاب سریع از الگوها:</Text>
           <View style={styles.presetChipsRow}>
             {PRESET_NAMES.map((preset) => {
-              const clean = preset.replace(/\s[^\s]+$/, '');
-              const isSelected = name.includes(clean);
+              const isSelected = name.includes(preset.label);
+              const iconColor = isSelected ? COLORS.black : COLORS.grayDark;
               return (
                 <Pressable
-                  key={preset}
+                  key={preset.label}
                   onPress={() => {
-                    setName(clean);
+                    setName(preset.label);
                     if (error) setError('');
                   }}
                   style={[
@@ -101,14 +133,17 @@ export const FridgeCreationStep: React.FC<FridgeCreationStepProps> = ({
                     isSelected && styles.presetChipActive,
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.presetChipText,
-                      isSelected && styles.presetChipTextActive,
-                    ]}
-                  >
-                    {preset}
-                  </Text>
+                  <View style={styles.presetChipContent}>
+                    {preset.icon(iconColor)}
+                    <Text
+                      style={[
+                        styles.presetChipText,
+                        isSelected && styles.presetChipTextActive,
+                      ]}
+                    >
+                      {preset.label}
+                    </Text>
+                  </View>
                 </Pressable>
               );
             })}
@@ -121,6 +156,7 @@ export const FridgeCreationStep: React.FC<FridgeCreationStepProps> = ({
           <View style={styles.modelsRow}>
             {FRIDGE_MODELS.map((model) => {
               const isSelected = selectedModel === model.id;
+              const iconColor = isSelected ? COLORS.black : COLORS.grayDark;
               return (
                 <Pressable
                   key={model.id}
@@ -130,14 +166,17 @@ export const FridgeCreationStep: React.FC<FridgeCreationStepProps> = ({
                     isSelected && styles.modelCardActive,
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.modelCardText,
-                      isSelected && styles.modelCardTextActive,
-                    ]}
-                  >
-                    {model.label}
-                  </Text>
+                  <View style={styles.modelCardContent}>
+                    {model.icon(iconColor)}
+                    <Text
+                      style={[
+                        styles.modelCardText,
+                        isSelected && styles.modelCardTextActive,
+                      ]}
+                    >
+                      {model.label}
+                    </Text>
+                  </View>
                 </Pressable>
               );
             })}
@@ -147,7 +186,8 @@ export const FridgeCreationStep: React.FC<FridgeCreationStepProps> = ({
         {/* Primary Action Button */}
         <View style={styles.actionContainer}>
           <RetroButton
-            label={isAlreadyCreated ? 'ذخیره و رفتن به انتخاب اقلام ⬅️' : '❄️ ساخت یخچال و انتخاب اقلام ⬅️'}
+            label={isAlreadyCreated ? 'ذخیره و رفتن به انتخاب اقلام' : 'ساخت یخچال و انتخاب اقلام'}
+            icon={<RetroCheckCircleIcon size={18} color={COLORS.black} />}
             variant="primary"
             onPress={handleBuild}
             size="lg"
@@ -157,6 +197,7 @@ export const FridgeCreationStep: React.FC<FridgeCreationStepProps> = ({
           {isAlreadyCreated && onNextStep && (
             <RetroButton
               label="ادامه با همین یخچال بدون تغییر"
+              icon={<Ionicons name="arrow-back" size={14} color={COLORS.black} />}
               variant="secondary"
               onPress={onNextStep}
               size="sm"
@@ -250,7 +291,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.black,
     borderRadius: 6,
     paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
+  },
+  presetChipContent: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
   },
   presetChipActive: {
     backgroundColor: COLORS.yellow,
@@ -280,6 +326,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modelCardContent: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 5,
   },
   modelCardActive: {
     backgroundColor: COLORS.lavender,

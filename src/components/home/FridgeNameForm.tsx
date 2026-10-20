@@ -3,7 +3,7 @@ import { View, StyleSheet, Text } from 'react-native';
 import { RetroWindow } from '../common/RetroWindow';
 import { RetroInput } from '../common/RetroInput';
 import { RetroButton } from '../common/RetroButton';
-import { FridgeLogoIcon } from '../icons/RetroIcons';
+import { FridgeLogoIcon, RetroCheckIcon } from '../icons/RetroIcons';
 import { COLORS } from '../../constants/theme';
 
 interface FridgeNameFormProps {
@@ -40,6 +40,7 @@ export const FridgeNameForm: React.FC<FridgeNameFormProps> = ({
         <View style={styles.actionRow}>
           <RetroButton
             label="ثبت نام یخچال"
+            icon={<RetroCheckIcon size={14} color={COLORS.black} />}
             variant="primary"
             onPress={handleSave}
             size="sm"

@@ -4,6 +4,13 @@ import { WasteTrackingStats } from '../../types';
 import { RetroWindow } from '../common/RetroWindow';
 import { toPersianDigits } from '../../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
+import {
+  RetroCashCheckIcon,
+  RetroTrashIcon,
+  RetroSavingsIcon,
+  RetroSparkleIcon,
+  RetroBulbIcon,
+} from '../icons/RetroIcons';
 
 interface WasteSavingsCardProps {
   stats?: WasteTrackingStats;
@@ -29,14 +36,18 @@ export const WasteSavingsCard: React.FC<WasteSavingsCardProps> = ({ stats }) => 
 
   return (
     <RetroWindow
-      title="💰 صرفه‌جویی و کنترل دورریز"
+      title="صرفه‌جویی و کنترل دورریز"
       subtitle="محاسبه ارزش مواد مصرف‌شده و دورریز ماهانه"
+      headerColor="#81C784"
     >
       <View style={styles.container}>
         <View style={styles.statsRow}>
           {/* Saved Money Box */}
           <View style={[styles.statBox, styles.savedBox]}>
-            <Text style={styles.statLabel}>صرفه‌جویی ماهانه 💵</Text>
+            <View style={styles.statLabelRow}>
+              <RetroCashCheckIcon size={15} color="#2E7D32" />
+              <Text style={styles.statLabel}>صرفه‌جویی ماهانه</Text>
+            </View>
             <Text style={[styles.statValue, styles.savedValue]}>
               {formatTomans(currentStats.monthlySavedTomans)}
             </Text>
@@ -47,7 +58,10 @@ export const WasteSavingsCard: React.FC<WasteSavingsCardProps> = ({ stats }) => 
 
           {/* Wasted Money Box */}
           <View style={[styles.statBox, styles.wastedBox]}>
-            <Text style={styles.statLabel}>میزان دورریز 🗑️</Text>
+            <View style={styles.statLabelRow}>
+              <RetroTrashIcon size={15} color="#C62828" />
+              <Text style={styles.statLabel}>میزان دورریز</Text>
+            </View>
             <Text style={[styles.statValue, styles.wastedValue]}>
               {formatTomans(currentStats.monthlyWastedTomans)}
             </Text>
@@ -63,11 +77,18 @@ export const WasteSavingsCard: React.FC<WasteSavingsCardProps> = ({ stats }) => 
             <Text style={styles.efficiencyTitle}>شاخص سلامت مصرف یخچال:</Text>
             <Text style={styles.efficiencyPercent}>{toPersianDigits(rescueRate)}٪</Text>
           </View>
-          <Text style={styles.efficiencyDesc}>
-            {rescueRate >= 80
-              ? '🌟 عملکرد عالی! با مصرف به‌موقع هزینه‌های خانه را به حداقل رسانده‌اید.'
-              : '💡 با انتخاب دستورهای ضد دورریز، اقلام در معرض خطر را نجات دهید!'}
-          </Text>
+          <View style={styles.descRow}>
+            {rescueRate >= 80 ? (
+              <RetroSparkleIcon size={15} color={COLORS.orange} />
+            ) : (
+              <RetroBulbIcon size={15} color={COLORS.orange} />
+            )}
+            <Text style={styles.efficiencyDesc}>
+              {rescueRate >= 80
+                ? 'عملکرد عالی! با مصرف به‌موقع هزینه‌های خانه را به حداقل رسانده‌اید.'
+                : 'با انتخاب دستورهای ضد دورریز، اقلام در معرض خطر را نجات دهید!'}
+            </Text>
+          </View>
         </View>
       </View>
     </RetroWindow>
@@ -96,6 +117,17 @@ const styles = StyleSheet.create({
   },
   wastedBox: {
     backgroundColor: '#FFEBEE',
+  },
+  statLabelRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  descRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
   },
   statLabel: {
     fontSize: 11,

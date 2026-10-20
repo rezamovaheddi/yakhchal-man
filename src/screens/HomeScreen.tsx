@@ -13,6 +13,12 @@ import { RecipeAvailabilityResult, getSmartRecipeSummary } from '../utils/recipe
 import { RECIPES } from '../constants/initialData';
 import { COLORS, BORDER, RETRO_SHADOW } from '../constants/theme';
 import { toPersianDigits } from '../utils/persian';
+import {
+  RetroSnowflakeIcon,
+  RetroEditIcon,
+  RetroRefreshIcon,
+  RetroBulbIcon,
+} from '../components/icons/RetroIcons';
 
 interface HomeScreenProps {
   fridgeName: string;
@@ -137,7 +143,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           {/* Active Fridge Status Ribbon */}
           <View style={styles.fridgeRibbon}>
             <View style={styles.ribbonInfo}>
-              <Text style={styles.ribbonTitle}>❄️ {fridgeName}</Text>
+              <View style={styles.ribbonTitleRow}>
+                <RetroSnowflakeIcon size={18} color={COLORS.orange} />
+                <Text style={styles.ribbonTitle}>{fridgeName}</Text>
+              </View>
               <Text style={styles.ribbonMeta}>
                 {toPersianDigits(ingredients.length)} قلم کالا در یخچال موجود است
               </Text>
@@ -148,22 +157,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 onPress={() => onSelectStep('select_items')}
                 style={styles.ribbonBtn}
               >
-                <Text style={styles.ribbonBtnText}>ویرایش اقلام ✏️</Text>
+                <View style={styles.btnContentRow}>
+                  <RetroEditIcon size={13} color={COLORS.black} />
+                  <Text style={styles.ribbonBtnText}>ویرایش اقلام</Text>
+                </View>
               </Pressable>
               <Pressable
                 onPress={onResetFridge}
                 style={[styles.ribbonBtn, styles.ribbonResetBtn]}
               >
-                <Text style={styles.ribbonBtnText}>یخچال جدید 🔄</Text>
+                <View style={styles.btnContentRow}>
+                  <RetroRefreshIcon size={13} color={COLORS.black} />
+                  <Text style={styles.ribbonBtnText}>یخچال جدید</Text>
+                </View>
               </Pressable>
             </View>
           </View>
 
           {/* Smart Food Suggestion Summary Banner */}
           <View style={styles.smartSummaryCard}>
-            <Text style={styles.smartSummaryText}>
-              💡 {getSmartRecipeSummary(RECIPES, ingredients)}
-            </Text>
+            <View style={styles.smartSummaryRow}>
+              <RetroBulbIcon size={18} color={COLORS.orange} />
+              <Text style={styles.smartSummaryText}>
+                {getSmartRecipeSummary(RECIPES, ingredients)}
+              </Text>
+            </View>
           </View>
 
           {/* Smart Anti-Waste: Urgent Shelf ("اول این مواد را مصرف کن") */}
@@ -228,11 +246,16 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     flex: 1,
   },
+  ribbonTitleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
   ribbonTitle: {
     fontSize: 14,
     fontWeight: '900',
     color: COLORS.black,
-    marginBottom: 2,
   },
   ribbonMeta: {
     fontSize: 11,
@@ -252,6 +275,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     ...RETRO_SHADOW.sm,
   },
+  btnContentRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+  },
   ribbonResetBtn: {
     backgroundColor: COLORS.cream,
   },
@@ -267,6 +295,11 @@ const styles = StyleSheet.create({
     borderRadius: BORDER.radiusSm,
     padding: 10,
     ...RETRO_SHADOW.sm,
+  },
+  smartSummaryRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
   },
   smartSummaryText: {
     fontSize: 12,

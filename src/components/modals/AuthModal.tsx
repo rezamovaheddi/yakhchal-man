@@ -14,6 +14,12 @@ import { AvatarRenderer, AVATAR_OPTIONS } from '../icons/AvatarIcons';
 import { UserAccount } from '../../types';
 import { authStorage } from '../../utils/authStorage';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
+import {
+  RetroKeyIcon,
+  RetroSparkleIcon,
+  RetroUserIcon,
+} from '../icons/RetroIcons';
+import { Ionicons } from '@expo/vector-icons';
 
 interface AuthModalProps {
   visible: boolean;
@@ -138,9 +144,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }}
                   style={[styles.tabBtn, tab === 'login' && styles.tabBtnActive]}
                 >
-                  <Text style={[styles.tabBtnText, tab === 'login' && styles.tabBtnTextActive]}>
-                    ورود به حساب
-                  </Text>
+                  <View style={styles.tabContentRow}>
+                    <RetroKeyIcon size={14} color={tab === 'login' ? COLORS.black : COLORS.grayDark} />
+                    <Text style={[styles.tabBtnText, tab === 'login' && styles.tabBtnTextActive]}>
+                      ورود به حساب
+                    </Text>
+                  </View>
                 </Pressable>
 
                 <Pressable
@@ -150,16 +159,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }}
                   style={[styles.tabBtn, tab === 'register' && styles.tabBtnActive]}
                 >
-                  <Text style={[styles.tabBtnText, tab === 'register' && styles.tabBtnTextActive]}>
-                    ثبت‌نام جدید
-                  </Text>
+                  <View style={styles.tabContentRow}>
+                    <RetroUserIcon size={14} color={tab === 'register' ? COLORS.black : COLORS.grayDark} />
+                    <Text style={[styles.tabBtnText, tab === 'register' && styles.tabBtnTextActive]}>
+                      ثبت‌نام جدید
+                    </Text>
+                  </View>
                 </Pressable>
               </View>
 
               {/* Error Message */}
               {errorMessage ? (
                 <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>⚠️ {errorMessage}</Text>
+                  <View style={styles.errorRow}>
+                    <Ionicons name="alert-circle" size={14} color="#D9381E" />
+                    <Text style={styles.errorText}>{errorMessage}</Text>
+                  </View>
                 </View>
               ) : null}
 
@@ -190,7 +205,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   <View style={styles.actionButtons}>
                     <RetroButton
-                      label={isLoading ? 'در حال ورود...' : 'ورود به سیستم 🔑'}
+                      label={isLoading ? 'در حال ورود...' : 'ورود به سیستم'}
+                      icon={<RetroKeyIcon size={16} color={COLORS.black} />}
                       variant="green"
                       onPress={handleLoginSubmit}
                       disabled={isLoading}
@@ -296,7 +312,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   <View style={styles.actionButtons}>
                     <RetroButton
-                      label={isLoading ? 'در حال ساخت حساب...' : 'ساخت حساب کاربری ✨'}
+                      label={isLoading ? 'در حال ساخت حساب...' : 'ساخت حساب کاربری'}
+                      icon={<RetroSparkleIcon size={16} color={COLORS.black} />}
                       variant="primary"
                       onPress={handleRegisterSubmit}
                       disabled={isLoading}
@@ -354,6 +371,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...RETRO_SHADOW.sm,
   },
+  tabContentRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+  },
   tabBtnActive: {
     backgroundColor: COLORS.yellow,
     borderWidth: BORDER.thick,
@@ -373,6 +395,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 8,
     marginBottom: 10,
+  },
+  errorRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
   },
   errorText: {
     fontSize: 11,

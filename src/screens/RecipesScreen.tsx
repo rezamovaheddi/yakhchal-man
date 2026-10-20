@@ -4,7 +4,15 @@ import { Recipe } from '../types';
 import { RetroWindow } from '../components/common/RetroWindow';
 import { RetroButton } from '../components/common/RetroButton';
 import { RetroBadge } from '../components/common/RetroBadge';
-import { RetroCookingIcon } from '../components/icons/RetroIcons';
+import {
+  RetroCookingIcon,
+  RetroBellIcon,
+  RetroPlayIcon,
+  RetroPauseIcon,
+  RetroRefreshIcon,
+  RetroBookIcon,
+} from '../components/icons/RetroIcons';
+import { FoodIconRenderer } from '../components/icons/FoodIcons';
 import { toPersianDigits } from '../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../constants/theme';
 
@@ -64,7 +72,10 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({
           <View style={styles.timerDisplay}>
             <Text style={styles.timerDigits}>{formatTimer(timerSeconds)}</Text>
             {timerSeconds === 0 && (
-              <Text style={styles.timerDoneText}>غذا حاضر است! 🔔</Text>
+              <View style={styles.doneRow}>
+                <RetroBellIcon size={18} color={COLORS.orange} />
+                <Text style={styles.timerDoneText}>غذا حاضر است!</Text>
+              </View>
             )}
           </View>
 
@@ -95,6 +106,13 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({
             <RetroButton
               label={isRunning ? 'توقف تایمر' : 'شروع زمان‌سنج'}
               variant={isRunning ? 'danger' : 'green'}
+              icon={
+                isRunning ? (
+                  <RetroPauseIcon size={16} color={COLORS.white} />
+                ) : (
+                  <RetroPlayIcon size={16} color={COLORS.black} />
+                )
+              }
               onPress={() => setIsRunning(!isRunning)}
               size="md"
               style={{ flex: 1.2 }}
@@ -102,6 +120,7 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({
             <RetroButton
               label="تنظیم مجدد"
               variant="secondary"
+              icon={<RetroRefreshIcon size={15} color={COLORS.black} />}
               onPress={() => {
                 setIsRunning(false);
                 setTimerSeconds(15 * 60);
@@ -122,6 +141,7 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({
                 label="مطالعه دستور"
                 variant="primary"
                 size="sm"
+                icon={<RetroBookIcon size={14} color={COLORS.black} />}
                 onPress={() => onViewInstructions(recipe)}
               />
               <View style={styles.recipeRowInfo}>
@@ -142,15 +162,30 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({
         headerColor={COLORS.lavender}
       >
         <View style={styles.tipsList}>
-          <Text style={styles.tipItem}>
-            🍅 گوجه‌فرنگی‌ها را در دمای خنک نگه دارید و کنار موز قرار ندهید تا زود له نشوند.
-          </Text>
-          <Text style={styles.tipItem}>
-            🥔 سیب‌زمینی و پیاز نباید در یک محفظه مشترک باشند، گاز پیاز باعث جوانه زدن سیب‌زمینی می‌شود!
-          </Text>
-          <Text style={styles.tipItem}>
-            🧀 پنیر را در ظرف دربسته همراه با مقداری آب نمک ملایم نگهداری کنید تا همیشه نرم بماند.
-          </Text>
+          <View style={styles.tipRow}>
+            <View style={styles.tipIconBox}>
+              <FoodIconRenderer iconName="tomato" size={24} />
+            </View>
+            <Text style={styles.tipItem}>
+              گوجه‌فرنگی‌ها را در دمای خنک نگه دارید و کنار موز قرار ندهید تا زود له نشوند.
+            </Text>
+          </View>
+          <View style={styles.tipRow}>
+            <View style={styles.tipIconBox}>
+              <FoodIconRenderer iconName="potato" size={24} />
+            </View>
+            <Text style={styles.tipItem}>
+              سیب‌زمینی و پیاز نباید در یک محفظه مشترک باشند، گاز پیاز باعث جوانه زدن سیب‌زمینی می‌شود!
+            </Text>
+          </View>
+          <View style={styles.tipRow}>
+            <View style={styles.tipIconBox}>
+              <FoodIconRenderer iconName="cheese" size={24} />
+            </View>
+            <Text style={styles.tipItem}>
+              پنیر را در ظرف دربسته همراه با مقداری آب نمک ملایم نگهداری کنید تا همیشه نرم بماند.
+            </Text>
+          </View>
         </View>
       </RetroWindow>
     </ScrollView>
@@ -231,13 +266,36 @@ const styles = StyleSheet.create({
     color: COLORS.grayDark,
     marginTop: 2,
   },
+  doneRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
   tipsList: {
-    gap: 8,
+    gap: 10,
+  },
+  tipRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: COLORS.creamInput,
+    padding: 8,
+    borderRadius: BORDER.radiusSm,
+    borderWidth: 1.5,
+    borderColor: COLORS.black,
+  },
+  tipIconBox: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tipItem: {
     fontSize: 12,
     color: COLORS.black,
     lineHeight: 18,
     textAlign: 'right',
+    flex: 1,
   },
 });

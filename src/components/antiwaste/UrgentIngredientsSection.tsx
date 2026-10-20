@@ -7,6 +7,14 @@ import { FoodIconRenderer } from '../icons/FoodIcons';
 import { getUrgentIngredients, getExpiryBadgeText } from '../../utils/antiWasteEngine';
 import { formatQuantity, toPersianDigits } from '../../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
+import {
+  RetroSparkleIcon,
+  RetroCheckCircleIcon,
+  RetroTrashIcon,
+  RetroSnowflakeIcon,
+  RetroCupboardIcon,
+} from '../icons/RetroIcons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface UrgentIngredientsSectionProps {
   inventory: Ingredient[];
@@ -26,7 +34,9 @@ export const UrgentIngredientsSection: React.FC<UrgentIngredientsSectionProps> =
   if (urgentList.length === 0) {
     return (
       <View style={styles.allFreshBanner}>
-        <Text style={styles.allFreshIcon}>✨</Text>
+        <View style={styles.allFreshIconBox}>
+          <RetroSparkleIcon size={24} color={COLORS.yellow} />
+        </View>
         <View style={styles.allFreshTextContainer}>
           <Text style={styles.allFreshTitle}>همه مواد غذایی تازه هستند!</Text>
           <Text style={styles.allFreshDesc}>هیچ ماده‌ای در معرض انقضا یا دورریز نیست. عالی مدیریت کردی!</Text>
@@ -37,8 +47,9 @@ export const UrgentIngredientsSection: React.FC<UrgentIngredientsSectionProps> =
 
   return (
     <RetroWindow
-      title="🚨 اول این مواد را مصرف کن!"
+      title="اول این مواد را مصرف کن!"
       subtitle={`${toPersianDigits(urgentList.length)} قلم نیاز به مصرف فوری یا انقضا دارند`}
+      headerColor="#FF7043"
     >
       <View style={styles.container}>
         <Text style={styles.noticeText}>
@@ -69,9 +80,16 @@ export const UrgentIngredientsSection: React.FC<UrgentIngredientsSectionProps> =
                     isExpired ? styles.statusPillExpired : styles.statusPillExpiring,
                   ]}
                 >
-                  <Text style={styles.statusPillText}>
-                    {isExpired ? '⚠️ منقضی شده' : `⏳ ${badge.text}`}
-                  </Text>
+                  <View style={styles.statusPillContent}>
+                    {isExpired ? (
+                      <MaterialCommunityIcons name="alert-circle-outline" size={12} color="#FFFFFF" />
+                    ) : (
+                      <MaterialCommunityIcons name="clock-alert-outline" size={12} color="#B35300" />
+                    )}
+                    <Text style={styles.statusPillText}>
+                      {isExpired ? 'منقضی شده' : badge.text}
+                    </Text>
+                  </View>
                 </View>
 
                 {/* Food Icon */}
@@ -86,9 +104,18 @@ export const UrgentIngredientsSection: React.FC<UrgentIngredientsSectionProps> =
                 <Text style={styles.itemQuantity}>
                   {formatQuantity(item.quantity, item.unit)}
                 </Text>
-                <Text style={styles.locationTag}>
-                  📍 {item.storageLocation ?? 'یخچال'}
-                </Text>
+                <View style={styles.locationTagRow}>
+                  {item.storageLocation === 'فریزر' ? (
+                    <RetroSnowflakeIcon size={11} color="#0288D1" />
+                  ) : item.storageLocation === 'کابینت' ? (
+                    <RetroCupboardIcon size={11} color="#6D4C41" />
+                  ) : (
+                    <MaterialCommunityIcons name="fridge-outline" size={11} color={COLORS.black} />
+                  )}
+                  <Text style={styles.locationTagText}>
+                    {item.storageLocation ?? 'یخچال'}
+                  </Text>
+                </View>
 
                 {/* Action Buttons */}
                 <View style={styles.cardActions}>
@@ -100,7 +127,10 @@ export const UrgentIngredientsSection: React.FC<UrgentIngredientsSectionProps> =
                       pressed && styles.actionBtnPressed,
                     ]}
                   >
-                    <Text style={styles.actionBtnText}>مصرف شد ✔️</Text>
+                    <View style={styles.btnContentRow}>
+                      <RetroCheckCircleIcon size={12} color={COLORS.black} />
+                      <Text style={styles.actionBtnText}>مصرف شد</Text>
+                    </View>
                   </Pressable>
 
                   <Pressable
@@ -111,7 +141,10 @@ export const UrgentIngredientsSection: React.FC<UrgentIngredientsSectionProps> =
                       pressed && styles.actionBtnPressed,
                     ]}
                   >
-                    <Text style={[styles.actionBtnText, styles.wasteBtnText]}>دورریز 🗑️</Text>
+                    <View style={styles.btnContentRow}>
+                      <RetroTrashIcon size={12} color="#D9381E" />
+                      <Text style={[styles.actionBtnText, styles.wasteBtnText]}>دورریز</Text>
+                    </View>
                   </Pressable>
                 </View>
               </View>
@@ -127,9 +160,12 @@ export const UrgentIngredientsSection: React.FC<UrgentIngredientsSectionProps> =
             pressed && styles.actionBtnPressed,
           ]}
         >
-          <Text style={styles.cookPromptText}>
-            🍳 نمایش غذاهایی که این مواد را نجات می‌دهند!
-          </Text>
+          <View style={styles.cookPromptRow}>
+            <MaterialCommunityIcons name="pot-steam" size={18} color={COLORS.black} />
+            <Text style={styles.cookPromptText}>
+              نمایش غذاهایی که این مواد را نجات می‌دهند!
+            </Text>
+          </View>
         </Pressable>
       </View>
     </RetroWindow>
@@ -287,8 +323,44 @@ const styles = StyleSheet.create({
     padding: 10,
     ...RETRO_SHADOW.sm,
   },
-  allFreshIcon: {
-    fontSize: 24,
+  statusPillContent: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+  },
+  locationTagRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: COLORS.cream,
+    paddingVertical: 1,
+    paddingHorizontal: 5,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: COLORS.black,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  locationTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.black,
+  },
+  btnContentRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cookPromptRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+  },
+  allFreshIconBox: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   allFreshTextContainer: {
     flex: 1,

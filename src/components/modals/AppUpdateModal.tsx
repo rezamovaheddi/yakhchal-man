@@ -16,6 +16,14 @@ import { AppReleaseInfo, UpdateCheckState } from '../../types';
 import { CURRENT_APP_VERSION, downloadAndInstallApk } from '../../utils/updateService';
 import { toPersianDigits } from '../../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
+import {
+  RetroCheckCircleIcon,
+  RetroRefreshIcon,
+  RetroDownloadIcon,
+  RetroCloseIcon,
+  RetroAlertIcon,
+} from '../icons/RetroIcons';
+import { Ionicons } from '@expo/vector-icons';
 
 interface AppUpdateModalProps {
   visible: boolean;
@@ -112,7 +120,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
               {state === 'up_to_date' && (
                 <View style={styles.centerBox}>
                   <View style={styles.badgeLarge}>
-                    <Text style={styles.badgeLargeText}>✅</Text>
+                    <Ionicons name="checkmark-circle" size={44} color={COLORS.green} />
                   </View>
                   <Text style={styles.statusTitle}>برنامه شما به‌روز است!</Text>
                   <Text style={styles.statusSub}>
@@ -131,7 +139,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
               {/* Error State */}
               {state === 'error' && (
                 <View style={styles.centerBox}>
-                  <Text style={styles.errorIcon}>⚠️</Text>
+                  <Ionicons name="alert-circle" size={44} color="#D9381E" />
                   <Text style={styles.statusTitle}>خطا در بررسی به‌روزرسانی</Text>
                   <Text style={styles.errorText}>
                     {errorMessage || 'امکان برقراری ارتباط با مخزن برنامه وجود ندارد.'}
@@ -139,7 +147,8 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
                   <View style={styles.btnRow}>
                     {onRetryCheck && (
                       <RetroButton
-                        label="تلاش مجدد 🔄"
+                        label="تلاش مجدد"
+                        icon={<RetroRefreshIcon size={14} color={COLORS.black} />}
                         variant="secondary"
                         onPress={onRetryCheck}
                         size="sm"
@@ -148,6 +157,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
                     )}
                     <RetroButton
                       label="بستن"
+                      icon={<RetroCloseIcon size={13} color={COLORS.black} />}
                       variant="primary"
                       onPress={onClose}
                       size="sm"
@@ -203,7 +213,10 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
                   {/* In-App Installation Error if any */}
                   {installError && (
                     <View style={styles.installErrorBox}>
-                      <Text style={styles.installErrorText}>⚠️ {installError}</Text>
+                      <View style={styles.errorRow}>
+                        <Ionicons name="alert-circle" size={14} color="#D9381E" />
+                        <Text style={styles.installErrorText}>{installError}</Text>
+                      </View>
                     </View>
                   )}
 
@@ -212,8 +225,13 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
                     <RetroButton
                       label={
                         downloadProgress !== null
-                          ? 'در حال پردازش و نصب... ⏳'
-                          : 'نصب خودکار درون‌برنامه‌ای 📥'
+                          ? 'در حال پردازش و نصب...'
+                          : 'نصب خودکار درون‌برنامه‌ای'
+                      }
+                      icon={
+                        downloadProgress !== null ? undefined : (
+                          <RetroDownloadIcon size={16} color={COLORS.black} />
+                        )
                       }
                       variant="primary"
                       onPress={handleStartUpdate}
@@ -223,6 +241,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
 
                     <RetroButton
                       label="بعداً یادآوری کن"
+                      icon={<RetroCloseIcon size={12} color={COLORS.black} />}
                       variant="secondary"
                       onPress={onClose}
                       disabled={downloadProgress !== null}
@@ -373,6 +392,11 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 10,
     ...RETRO_SHADOW.sm,
+  },
+  errorRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
   },
   installErrorText: {
     fontSize: 11,

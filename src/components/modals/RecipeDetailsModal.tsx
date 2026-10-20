@@ -12,7 +12,15 @@ import { RetroWindow } from '../common/RetroWindow';
 import { RetroButton } from '../common/RetroButton';
 import { RetroBadge } from '../common/RetroBadge';
 import { FoodIconRenderer } from '../icons/FoodIcons';
-import { RetroClockIcon } from '../icons/RetroIcons';
+import {
+  RetroClockIcon,
+  RetroRemoveIcon,
+  RetroAddIcon,
+  RetroBulbIcon,
+  RetroSpeedometerIcon,
+  RetroCloseIcon,
+} from '../icons/RetroIcons';
+import { Ionicons } from '@expo/vector-icons';
 import { formatQuantity, toPersianDigits } from '../../utils/persian';
 import { normalizePersianName, suggestSubstitutes } from '../../utils/recipeEngine';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
@@ -78,6 +86,7 @@ export const RecipeDetailsModal: React.FC<RecipeDetailsModalProps> = ({
                     <RetroBadge
                       label={`سطح: ${recipe.difficulty}`}
                       color={COLORS.yellow}
+                      icon={<RetroSpeedometerIcon size={12} color={COLORS.black} />}
                     />
                   </View>
                 </View>
@@ -91,14 +100,14 @@ export const RecipeDetailsModal: React.FC<RecipeDetailsModalProps> = ({
                     style={styles.servingsBtn}
                     onPress={() => setServings((s) => Math.max(1, s - 1))}
                   >
-                    <Text style={styles.servingsBtnText}>−</Text>
+                    <RetroRemoveIcon size={14} color={COLORS.black} />
                   </Pressable>
                   <Text style={styles.servingsCount}>{toPersianDigits(servings)} نفر</Text>
                   <Pressable
                     style={styles.servingsBtn}
                     onPress={() => setServings((s) => Math.min(12, s + 1))}
                   >
-                    <Text style={styles.servingsBtnText}>+</Text>
+                    <RetroAddIcon size={14} color={COLORS.black} />
                   </Pressable>
                 </View>
               </View>
@@ -121,9 +130,16 @@ export const RecipeDetailsModal: React.FC<RecipeDetailsModalProps> = ({
                           { backgroundColor: isAvailable ? COLORS.green : '#FF9E9E' },
                         ]}
                       >
-                        <Text style={styles.statusBadgeText}>
-                          {isAvailable ? 'موجود است ✓' : 'کسری در یخچال ✗'}
-                        </Text>
+                        <View style={styles.statusBadgeContent}>
+                          {isAvailable ? (
+                            <Ionicons name="checkmark" size={11} color="#0D5C2C" />
+                          ) : (
+                            <Ionicons name="close" size={11} color="#9C0006" />
+                          )}
+                          <Text style={styles.statusBadgeText}>
+                            {isAvailable ? 'موجود است' : 'کسری در یخچال'}
+                          </Text>
+                        </View>
                       </View>
                       <Text style={styles.ingredientName}>
                         • {req.name} — {formatQuantity(scaledRequired, req.unit)}
@@ -136,7 +152,10 @@ export const RecipeDetailsModal: React.FC<RecipeDetailsModalProps> = ({
               {/* Substitutions Suggestion Section */}
               {substitutions.length > 0 && (
                 <View style={styles.substitutesBox}>
-                  <Text style={styles.substitutesHeading}>💡 جایگزین‌های پیشنهادی برای کسری‌ها:</Text>
+                  <View style={styles.substitutesHeadingRow}>
+                    <RetroBulbIcon size={15} color={COLORS.orange} />
+                    <Text style={styles.substitutesHeading}>جایگزین‌های پیشنهادی برای کسری‌ها:</Text>
+                  </View>
                   {substitutions.map((sub, idx) => (
                     <View key={idx} style={styles.substituteItem}>
                       <Text style={styles.substituteMissing}>بجای «{sub.missing}»:</Text>
@@ -282,6 +301,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.black,
   },
+  statusBadgeContent: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+  },
   statusBadgeText: {
     fontSize: 10,
     fontWeight: '700',
@@ -407,6 +431,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#2E5016',
     textAlign: 'right',
+  },
+  substitutesHeadingRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 2,
   },
   substituteItem: {

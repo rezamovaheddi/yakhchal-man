@@ -6,7 +6,13 @@ import { RetroButton } from '../components/common/RetroButton';
 import { RetroBadge } from '../components/common/RetroBadge';
 import { RetroProgressBar } from '../components/common/RetroProgressBar';
 import { FoodIconRenderer } from '../components/icons/FoodIcons';
-import { RetroClockIcon } from '../components/icons/RetroIcons';
+import {
+  RetroClockIcon,
+  RetroSparkleIcon,
+  RetroBulbIcon,
+  RetroAlarmLightIcon,
+} from '../components/icons/RetroIcons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   rankRecipesByScore,
   MealFilter,
@@ -23,12 +29,36 @@ interface CookingScreenProps {
   onViewInstructions: (recipe: Recipe) => void;
 }
 
-const MEAL_TABS: Array<{ id: MealFilter; label: string }> = [
-  { id: 'همه', label: 'همه' },
-  { id: 'صبحانه', label: 'صبحانه' },
-  { id: 'ناهار_شام', label: 'ناهار و شام' },
-  { id: 'دسر', label: 'دسر و عصرانه' },
-  { id: 'اقتصادی', label: 'کم‌هزینه' },
+const MEAL_TABS: Array<{
+  id: MealFilter;
+  label: string;
+  icon: (color: string) => React.ReactNode;
+}> = [
+  {
+    id: 'همه',
+    label: 'همه',
+    icon: (color) => <Ionicons name="apps-outline" size={13} color={color} />,
+  },
+  {
+    id: 'صبحانه',
+    label: 'صبحانه',
+    icon: (color) => <MaterialCommunityIcons name="weather-sunset-up" size={14} color={color} />,
+  },
+  {
+    id: 'ناهار_شام',
+    label: 'ناهار و شام',
+    icon: (color) => <MaterialCommunityIcons name="weather-sunny" size={14} color={color} />,
+  },
+  {
+    id: 'دسر',
+    label: 'دسر و عصرانه',
+    icon: (color) => <MaterialCommunityIcons name="coffee-outline" size={14} color={color} />,
+  },
+  {
+    id: 'اقتصادی',
+    label: 'کم‌هزینه',
+    icon: (color) => <MaterialCommunityIcons name="piggy-bank-outline" size={14} color={color} />,
+  },
 ];
 
 export const CookingScreen: React.FC<CookingScreenProps> = ({
@@ -64,11 +94,14 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
       >
         {/* Readiness Summary Banner */}
         <View style={styles.summaryBanner}>
-          <Text style={styles.summaryBannerText}>
-            🍳 {readyCount > 0
-              ? `همین الان می‌توانید ${toPersianDigits(readyCount)} غذا بپزید!`
-              : 'برای پخت کامل، برخی اقلام را تهیه یا جایگزین کنید.'}
-          </Text>
+          <View style={styles.summaryBannerRow}>
+            <MaterialCommunityIcons name="pot-steam" size={20} color={COLORS.orange} />
+            <Text style={styles.summaryBannerText}>
+              {readyCount > 0
+                ? `همین الان می‌توانید ${toPersianDigits(readyCount)} غذا بپزید!`
+                : 'برای پخت کامل، برخی اقلام را تهیه یا جایگزین کنید.'}
+            </Text>
+          </View>
         </View>
 
         {/* Filter Switcher: All vs Ready-now */}
@@ -97,14 +130,17 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
               filterMode === 'available' && styles.filterBtnActive,
             ]}
           >
-            <Text
-              style={[
-                styles.filterBtnText,
-                filterMode === 'available' && styles.filterBtnTextActive,
-              ]}
-            >
-              آماده پخت ({toPersianDigits(categoryFiltered.filter((e) => e.isFullyAvailable).length)}) ✨
-            </Text>
+            <View style={styles.filterBtnContent}>
+              <Text
+                style={[
+                  styles.filterBtnText,
+                  filterMode === 'available' && styles.filterBtnTextActive,
+                ]}
+              >
+                آماده پخت ({toPersianDigits(categoryFiltered.filter((e) => e.isFullyAvailable).length)})
+              </Text>
+              <RetroSparkleIcon size={13} color={COLORS.orange} />
+            </View>
           </Pressable>
         </View>
 
@@ -117,6 +153,7 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
         >
           {MEAL_TABS.map((tab) => {
             const isSelected = mealFilter === tab.id;
+            const iconColor = isSelected ? COLORS.black : COLORS.grayDark;
             return (
               <Pressable
                 key={tab.id}
@@ -126,14 +163,17 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
                   isSelected && styles.mealTabBtnActive,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.mealTabBtnText,
-                    isSelected && styles.mealTabBtnTextActive,
-                  ]}
-                >
-                  {tab.label}
-                </Text>
+                <View style={styles.mealTabContent}>
+                  {tab.icon(iconColor)}
+                  <Text
+                    style={[
+                      styles.mealTabBtnText,
+                      isSelected && styles.mealTabBtnTextActive,
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                </View>
               </Pressable>
             );
           })}
@@ -175,8 +215,9 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
                         ) : null}
                         {countExpiringIngredientsInRecipe(recipe, inventory) > 0 ? (
                           <RetroBadge
-                            label={`🚨 نجات ${toPersianDigits(countExpiringIngredientsInRecipe(recipe, inventory))} قلم در معرض انقضا`}
+                            label={`نجات ${toPersianDigits(countExpiringIngredientsInRecipe(recipe, inventory))} قلم در معرض انقضا`}
                             color="#FFCCBC"
+                            icon={<RetroAlarmLightIcon size={12} color="#D9381E" />}
                           />
                         ) : null}
                       </View>
@@ -202,13 +243,19 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
                   {/* Missing ingredients or Substitutes Alert */}
                   {!isFullyAvailable && missingIngredients.length > 0 && (
                     <View style={styles.missingBox}>
-                      <Text style={styles.missingTitle}>
-                        ❌ کسری مواد: {missingIngredients.join('، ')}
-                      </Text>
-                      {substitutes.length > 0 && (
-                        <Text style={styles.substituteHint}>
-                          💡 جایگزین: {substitutes[0].missing} ← {substitutes[0].substitutes[0]}
+                      <View style={styles.missingRow}>
+                        <Ionicons name="close-circle" size={14} color="#D9381E" />
+                        <Text style={styles.missingTitle}>
+                          کسری مواد: {missingIngredients.join('، ')}
                         </Text>
+                      </View>
+                      {substitutes.length > 0 && (
+                        <View style={styles.substituteRow}>
+                          <RetroBulbIcon size={14} color={COLORS.orange} />
+                          <Text style={styles.substituteHint}>
+                            جایگزین: {substitutes[0].missing} ← {substitutes[0].substitutes[0]}
+                          </Text>
+                        </View>
                       )}
                     </View>
                   )}
@@ -229,6 +276,7 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
                     <RetroButton
                       label="دستور پخت"
                       variant="primary"
+                      icon={<RetroClockIcon size={13} color={COLORS.black} />}
                       onPress={() => onViewInstructions(recipe)}
                       size="sm"
                     />
@@ -395,11 +443,22 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     ...RETRO_SHADOW.sm,
   },
+  summaryBannerRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   summaryBannerText: {
     fontSize: 12,
     fontWeight: '800',
     color: COLORS.black,
     textAlign: 'center',
+  },
+  filterBtnContent: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 5,
   },
   mealFilterScrollContainer: {
     marginBottom: 12,
@@ -416,6 +475,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.black,
     borderRadius: 6,
+  },
+  mealTabContent: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 5,
   },
   mealTabBtnActive: {
     backgroundColor: COLORS.orange,
@@ -438,11 +502,21 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 3,
   },
+  missingRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 5,
+  },
   missingTitle: {
     fontSize: 10,
     fontWeight: '800',
     color: '#A82820',
     textAlign: 'right',
+  },
+  substituteRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 5,
   },
   substituteHint: {
     fontSize: 10,

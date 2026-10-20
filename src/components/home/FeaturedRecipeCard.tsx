@@ -6,7 +6,14 @@ import { RetroButton } from '../common/RetroButton';
 import { RetroBadge } from '../common/RetroBadge';
 import { RetroProgressBar } from '../common/RetroProgressBar';
 import { FoodIconRenderer } from '../icons/FoodIcons';
-import { RetroClockIcon } from '../icons/RetroIcons';
+import {
+  RetroClockIcon,
+  RetroSparkleIcon,
+  RetroBulbIcon,
+  RetroRefreshIcon,
+  RetroBookIcon,
+} from '../icons/RetroIcons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RecipeAvailabilityResult, suggestSubstitutes } from '../../utils/recipeEngine';
 import { toPersianDigits } from '../../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
@@ -36,11 +43,17 @@ export const FeaturedRecipeCard: React.FC<FeaturedRecipeCardProps> = ({
           <FoodIconRenderer iconName={recipe.iconName} size={64} />
           {isFullyAvailable ? (
             <View style={styles.readyTag}>
-              <Text style={styles.readyTagText}>آماده پخت! ✨</Text>
+              <View style={styles.readyTagRow}>
+                <RetroSparkleIcon size={11} color={COLORS.black} />
+                <Text style={styles.readyTagText}>آماده پخت!</Text>
+              </View>
             </View>
           ) : missingIngredients.length === 1 ? (
             <View style={[styles.readyTag, { backgroundColor: COLORS.yellow }]}>
-              <Text style={styles.readyTagText}>فقط ۱ کسری! ⚡</Text>
+              <View style={styles.readyTagRow}>
+                <MaterialCommunityIcons name="lightning-bolt" size={12} color={COLORS.black} />
+                <Text style={styles.readyTagText}>فقط ۱ کسری!</Text>
+              </View>
             </View>
           ) : null}
         </View>
@@ -68,11 +81,14 @@ export const FeaturedRecipeCard: React.FC<FeaturedRecipeCardProps> = ({
       {/* Retro Inset Availability Section with Progress Bar */}
       <View style={styles.availabilityBox}>
         <View style={styles.availabilityHeader}>
-          <Text style={styles.availabilityLabel}>
-            {isFullyAvailable
-              ? '✅ تمام مواد اولیه در یخچال موجود است:'
-              : 'وضعیت موجودی مواد در یخچال:'}
-          </Text>
+          <View style={styles.availabilityLabelRow}>
+            {isFullyAvailable && <Ionicons name="checkmark-circle" size={14} color="#2E7D32" />}
+            <Text style={styles.availabilityLabel}>
+              {isFullyAvailable
+                ? 'تمام مواد اولیه در یخچال موجود است:'
+                : 'وضعیت موجودی مواد در یخچال:'}
+            </Text>
+          </View>
           <Text style={styles.availabilityCount}>
             {toPersianDigits(availableCount)} از {toPersianDigits(totalRequired)} ماده ({toPersianDigits(percentage)}٪)
           </Text>
@@ -87,13 +103,19 @@ export const FeaturedRecipeCard: React.FC<FeaturedRecipeCardProps> = ({
         {/* Missing ingredients & substitutes notice if any */}
         {!isFullyAvailable && missingIngredients.length > 0 && (
           <View style={styles.missingNotice}>
-            <Text style={styles.missingText}>
-              ❌ کسری: {missingIngredients.join('، ')}
-            </Text>
-            {substitutes.length > 0 && (
-              <Text style={styles.substituteText}>
-                💡 جایگزین: {substitutes[0].missing} ← {substitutes[0].substitutes[0]}
+            <View style={styles.missingRow}>
+              <Ionicons name="close-circle" size={13} color="#D9381E" />
+              <Text style={styles.missingText}>
+                کسری: {missingIngredients.join('، ')}
               </Text>
+            </View>
+            {substitutes.length > 0 && (
+              <View style={styles.substituteRow}>
+                <RetroBulbIcon size={13} color={COLORS.orange} />
+                <Text style={styles.substituteText}>
+                  جایگزین: {substitutes[0].missing} ← {substitutes[0].substitutes[0]}
+                </Text>
+              </View>
             )}
           </View>
         )}
@@ -103,6 +125,7 @@ export const FeaturedRecipeCard: React.FC<FeaturedRecipeCardProps> = ({
       <View style={styles.buttonsRow}>
         <RetroButton
           label="پیشنهاد غذای دیگه"
+          icon={<RetroRefreshIcon size={14} color={COLORS.black} />}
           variant="primary"
           onPress={onNextRecipe}
           size="md"
@@ -110,6 +133,7 @@ export const FeaturedRecipeCard: React.FC<FeaturedRecipeCardProps> = ({
         />
         <RetroButton
           label="مشاهده دستور پخت"
+          icon={<RetroBookIcon size={14} color={COLORS.black} />}
           variant="secondary"
           onPress={() => onViewInstructions(recipe)}
           size="md"
@@ -148,6 +172,11 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 5,
     paddingVertical: 1,
+  },
+  readyTagRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 3,
   },
   readyTagText: {
     fontSize: 9,
@@ -191,6 +220,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
+  availabilityLabelRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+  },
   availabilityLabel: {
     fontSize: 11,
     fontWeight: '700',
@@ -203,12 +237,23 @@ const styles = StyleSheet.create({
   },
   missingNotice: {
     marginTop: 6,
+    gap: 4,
+  },
+  missingRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
   },
   missingText: {
     fontSize: 11,
     color: '#A83B3B',
     fontWeight: '700',
     textAlign: 'right',
+  },
+  substituteRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
   },
   substituteText: {
     fontSize: 11,

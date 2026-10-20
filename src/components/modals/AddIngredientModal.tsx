@@ -13,6 +13,13 @@ import { RetroWindow } from '../common/RetroWindow';
 import { RetroInput } from '../common/RetroInput';
 import { RetroButton } from '../common/RetroButton';
 import { FoodIconRenderer } from '../icons/FoodIcons';
+import {
+  RetroCheckCircleIcon,
+  RetroCloseIcon,
+  RetroSnowflakeIcon,
+  RetroCupboardIcon,
+} from '../icons/RetroIcons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getFutureDateString, DEFAULT_INGREDIENT_PRICES } from '../../utils/antiWasteEngine';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 
@@ -35,6 +42,10 @@ const AVAILABLE_ICONS = [
   'chicken',
   'butter',
   'bread',
+  'fish',
+  'meat',
+  'rice',
+  'apple',
 ];
 const UNITS: IngredientUnit[] = ['عدد', 'بسته', 'لیتر', 'کیلوگرم', 'حبه'];
 const CATEGORIES: IngredientCategory[] = [
@@ -163,25 +174,38 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
               {/* Storage Location selection */}
               <Text style={styles.sectionLabel}>محل نگهداری:</Text>
               <View style={styles.chipsRow}>
-                {LOCATIONS.map((loc) => (
-                  <Pressable
-                    key={loc}
-                    onPress={() => setStorageLocation(loc)}
-                    style={[
-                      styles.chip,
-                      storageLocation === loc && styles.chipActive,
-                    ]}
-                  >
-                    <Text
+                {LOCATIONS.map((loc) => {
+                  const isActive = storageLocation === loc;
+                  const iconColor = isActive ? COLORS.black : COLORS.grayDark;
+                  return (
+                    <Pressable
+                      key={loc}
+                      onPress={() => setStorageLocation(loc)}
                       style={[
-                        styles.chipText,
-                        storageLocation === loc && styles.chipTextActive,
+                        styles.chip,
+                        isActive && styles.chipActive,
                       ]}
                     >
-                      {loc === 'یخچال' ? '❄️ یخچال' : loc === 'فریزر' ? '🧊 فریزر' : '🚪 کابینت'}
-                    </Text>
-                  </Pressable>
-                ))}
+                      <View style={styles.chipContentRow}>
+                        {loc === 'یخچال' ? (
+                          <MaterialCommunityIcons name="fridge-outline" size={14} color={iconColor} />
+                        ) : loc === 'فریزر' ? (
+                          <RetroSnowflakeIcon size={14} color={isActive ? COLORS.black : '#0288D1'} />
+                        ) : (
+                          <RetroCupboardIcon size={14} color={isActive ? COLORS.black : '#6D4C41'} />
+                        )}
+                        <Text
+                          style={[
+                            styles.chipText,
+                            isActive && styles.chipTextActive,
+                          ]}
+                        >
+                          {loc}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
               </View>
 
               {/* Shelf-life & Price row */}
@@ -253,6 +277,7 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
               <View style={styles.actionsRow}>
                 <RetroButton
                   label="ثبت در یخچال"
+                  icon={<RetroCheckCircleIcon size={16} color={COLORS.black} />}
                   variant="primary"
                   onPress={handleSubmit}
                   size="md"
@@ -260,6 +285,7 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
                 />
                 <RetroButton
                   label="انصراف"
+                  icon={<RetroCloseIcon size={14} color={COLORS.black} />}
                   variant="secondary"
                   onPress={onClose}
                   size="md"
@@ -312,6 +338,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingVertical: 4,
     paddingHorizontal: 8,
+  },
+  chipContentRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
   },
   chipActive: {
     backgroundColor: COLORS.yellow,

@@ -1,7 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
-import { FridgeLogoIcon, RetroMinimizeIcon, RetroMaximizeIcon, RetroCloseIcon } from '../icons/RetroIcons';
+import {
+  FridgeLogoIcon,
+  RetroMinimizeIcon,
+  RetroMaximizeIcon,
+  RetroCloseIcon,
+  RetroSparkleIcon,
+  RetroUserIcon,
+} from '../icons/RetroIcons';
 import { AvatarRenderer } from '../icons/AvatarIcons';
 import { UserAccount } from '../../types';
 
@@ -32,9 +39,17 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           <View>
             <Text style={styles.appName}>یخچال من</Text>
             <Pressable onPress={onCheckUpdates}>
-              <Text style={styles.appVersion}>
-                نسخه ۱.۱ {hasUpdate ? '• به‌روزرسانی موجود است! ✨' : '(رترو سیستم)'}
-              </Text>
+              <View style={styles.versionRow}>
+                <Text style={styles.appVersion}>نسخه ۱.۲</Text>
+                {hasUpdate ? (
+                  <View style={styles.updateAvailableRow}>
+                    <RetroSparkleIcon size={11} color={COLORS.yellow} />
+                    <Text style={styles.updateAvailableText}>به‌روزرسانی جدید!</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.appVersion}>(رترو سیستم)</Text>
+                )}
+              </View>
             </Pressable>
           </View>
         </View>
@@ -55,9 +70,12 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
       {/* Sub-header Ribbon with Persian Tagline & Account Pill */}
       <View style={styles.subBar}>
-        <Text style={styles.taglineText} numberOfLines={1}>
-          با چیزهایی که داری، خوشمزه بپز! ✨
-        </Text>
+        <View style={styles.taglineRow}>
+          <RetroSparkleIcon size={14} color={COLORS.orange} />
+          <Text style={styles.taglineText} numberOfLines={1}>
+            با چیزهایی که داری، خوشمزه بپز!
+          </Text>
+        </View>
 
         <Pressable
           onPress={currentUser ? onOpenProfile : onOpenAuth}
@@ -76,7 +94,8 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             </View>
           ) : (
             <View style={styles.userBadgeContent}>
-              <Text style={styles.loginText}>ورود / ثبت‌نام 👤</Text>
+              <RetroUserIcon size={16} color={COLORS.black} />
+              <Text style={styles.loginText}>ورود / ثبت‌نام</Text>
             </View>
           )}
         </Pressable>
@@ -155,12 +174,36 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
+  taglineRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 5,
+    flex: 1,
+  },
   taglineText: {
     fontSize: 11,
     fontWeight: '700',
     color: COLORS.black,
-    flex: 1,
     textAlign: 'right',
+  },
+  versionRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+  },
+  updateAvailableRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: COLORS.cream,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  updateAvailableText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.orange,
   },
   userBadge: {
     borderWidth: 1.5,

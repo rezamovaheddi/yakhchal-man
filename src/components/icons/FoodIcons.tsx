@@ -1,5 +1,6 @@
 import React from 'react';
 import Svg, { Path, Rect, Circle, G, Ellipse } from 'react-native-svg';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/theme';
 
 interface IconProps {
@@ -267,7 +268,7 @@ export const FoodIconRenderer: React.FC<{ iconName: string; size?: number }> = (
   iconName,
   size = 36,
 }) => {
-  switch (iconName) {
+  switch (iconName.toLowerCase()) {
     case 'egg':
       return <EggIcon size={size} />;
     case 'tomato':
@@ -294,7 +295,38 @@ export const FoodIconRenderer: React.FC<{ iconName: string; size?: number }> = (
       return <ButterIcon size={size} />;
     case 'bread':
       return <BreadIcon size={size} />;
+    // Expo Vector Icons mappings (MaterialCommunityIcons from icons.expo.fyi)
+    case 'fish':
+      return <MaterialCommunityIcons name="fish" size={size} color="#0288D1" />;
+    case 'meat':
+    case 'steak':
+      return <MaterialCommunityIcons name="food-steak" size={size} color="#C62828" />;
+    case 'rice':
+      return <MaterialCommunityIcons name="rice" size={size} color="#616161" />;
+    case 'noodle':
+    case 'noodles':
+    case 'pasta':
+      return <MaterialCommunityIcons name="noodles" size={size} color="#F57F17" />;
+    case 'apple':
+    case 'fruit':
+      return <MaterialCommunityIcons name="food-apple" size={size} color="#D32F2F" />;
+    case 'corn':
+      return <MaterialCommunityIcons name="corn" size={size} color="#FBC02D" />;
+    case 'spice':
+    case 'salt':
+      return <MaterialCommunityIcons name="shaker-outline" size={size} color="#5D4037" />;
+    case 'drink':
+    case 'beverage':
+    case 'water':
+      return <MaterialCommunityIcons name="cup-water" size={size} color="#0288D1" />;
+    case 'herb':
+    case 'vegetable':
+    case 'greens':
+      return <MaterialCommunityIcons name="sprout" size={size} color="#2E7D32" />;
+    case 'stew':
+    case 'soup':
+      return <MaterialCommunityIcons name="pot-steam" size={size} color="#E65100" />;
     default:
-      return <EggIcon size={size} />;
+      return <MaterialCommunityIcons name="silverware-fork-knife" size={size * 0.85} color={COLORS.black} />;
   }
 };

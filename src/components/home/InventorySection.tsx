@@ -7,6 +7,16 @@ import { FoodIconRenderer } from '../icons/FoodIcons';
 import { formatQuantity, toPersianDigits } from '../../utils/persian';
 import { getExpiryBadgeText } from '../../utils/antiWasteEngine';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
+import {
+  RetroAddIcon,
+  RetroRemoveIcon,
+  RetroCheckCircleIcon,
+  RetroTrashIcon,
+  RetroSnowflakeIcon,
+  RetroCupboardIcon,
+  RetroEditIcon,
+} from '../icons/RetroIcons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface InventorySectionProps {
   ingredients: Ingredient[];
@@ -69,16 +79,24 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                         : styles.expiryTagFresh,
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.expiryTagText,
-                        isExpired && styles.expiryTagTextExpired,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {isExpired ? '⚠️ ' : isExpiringSoon ? '⏳ ' : '🌿 '}
-                      {expiryInfo.text}
-                    </Text>
+                    <View style={styles.expiryTagRow}>
+                      {isExpired ? (
+                        <MaterialCommunityIcons name="alert-circle-outline" size={13} color="#D9381E" />
+                      ) : isExpiringSoon ? (
+                        <MaterialCommunityIcons name="clock-alert-outline" size={13} color="#B35300" />
+                      ) : (
+                        <MaterialCommunityIcons name="leaf" size={13} color={COLORS.green} />
+                      )}
+                      <Text
+                        style={[
+                          styles.expiryTagText,
+                          isExpired && styles.expiryTagTextExpired,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {expiryInfo.text}
+                      </Text>
+                    </View>
                   </View>
                 )}
 
@@ -94,9 +112,18 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
 
                 {/* Location & Category Tag */}
                 <View style={styles.metaRow}>
-                  <Text style={styles.locationTag}>
-                    📍 {item.storageLocation ?? 'یخچال'}
-                  </Text>
+                  <View style={styles.locationTagRow}>
+                    {item.storageLocation === 'فریزر' ? (
+                      <RetroSnowflakeIcon size={12} color="#0288D1" />
+                    ) : item.storageLocation === 'کابینت' ? (
+                      <RetroCupboardIcon size={12} color="#6D4C41" />
+                    ) : (
+                      <MaterialCommunityIcons name="fridge-outline" size={12} color={COLORS.black} />
+                    )}
+                    <Text style={styles.locationTagText}>
+                      {item.storageLocation ?? 'یخچال'}
+                    </Text>
+                  </View>
                   <Text style={styles.itemCategory}>{item.category}</Text>
                 </View>
 
@@ -117,7 +144,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                       pressed && styles.counterBtnPressed,
                     ]}
                   >
-                    <Text style={styles.counterBtnText}>+</Text>
+                    <RetroAddIcon size={15} color={COLORS.black} />
                   </Pressable>
 
                   <View style={styles.quantityNumberBox}>
@@ -136,7 +163,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                       pressed && !isDepleted && styles.counterBtnPressed,
                     ]}
                   >
-                    <Text style={styles.counterBtnText}>-</Text>
+                    <RetroRemoveIcon size={15} color={isDepleted ? COLORS.grayDark : COLORS.black} />
                   </Pressable>
                 </View>
 
@@ -152,7 +179,10 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                           pressed && styles.counterBtnPressed,
                         ]}
                       >
-                        <Text style={styles.miniActionBtnText}>مصرف ✔️</Text>
+                        <View style={styles.miniBtnRow}>
+                          <RetroCheckCircleIcon size={13} color={COLORS.black} />
+                          <Text style={styles.miniActionBtnText}>مصرف</Text>
+                        </View>
                       </Pressable>
                     )}
                     {onWasteItem && (
@@ -164,9 +194,12 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                           pressed && styles.counterBtnPressed,
                         ]}
                       >
-                        <Text style={[styles.miniActionBtnText, styles.miniWasteBtnText]}>
-                          دورریز 🗑️
-                        </Text>
+                        <View style={styles.miniBtnRow}>
+                          <RetroTrashIcon size={13} color="#D9381E" />
+                          <Text style={[styles.miniActionBtnText, styles.miniWasteBtnText]}>
+                            دورریز
+                          </Text>
+                        </View>
                       </Pressable>
                     )}
                   </View>
@@ -180,7 +213,8 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
       {/* Action Buttons */}
       <View style={styles.footerRow}>
         <RetroButton
-          label="+ افزودن مواد غذایی"
+          label="افزودن مواد غذایی"
+          icon={<RetroAddIcon size={16} color={COLORS.black} />}
           variant="yellow"
           onPress={onOpenAddModal}
           size="md"
@@ -189,6 +223,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
         {onEditSelection && (
           <RetroButton
             label="ویرایش اقلام"
+            icon={<RetroEditIcon size={15} color={COLORS.black} />}
             variant="secondary"
             onPress={onEditSelection}
             size="md"
@@ -387,6 +422,32 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: 8,
     width: '100%',
+  },
+  expiryTagRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 3,
+  },
+  locationTagRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: COLORS.cream,
+    paddingVertical: 1,
+    paddingHorizontal: 4,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: COLORS.black,
+  },
+  locationTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.black,
+  },
+  miniBtnRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 3,
   },
   miniActionBtn: {
     flex: 1,

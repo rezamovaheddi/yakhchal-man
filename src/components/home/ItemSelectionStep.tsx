@@ -4,6 +4,12 @@ import { Ingredient, IngredientCategory } from '../../types';
 import { RetroWindow } from '../common/RetroWindow';
 import { RetroButton } from '../common/RetroButton';
 import { FoodIconRenderer } from '../icons/FoodIcons';
+import {
+  RetroAddIcon,
+  RetroRemoveIcon,
+  RetroCheckCircleIcon,
+} from '../icons/RetroIcons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { toPersianDigits, formatQuantity } from '../../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 
@@ -127,9 +133,16 @@ export const ItemSelectionStep: React.FC<ItemSelectionStepProps> = ({
                     isSelected ? styles.tagSelected : styles.tagUnselected,
                   ]}
                 >
-                  <Text style={styles.selectionTagText}>
-                    {isSelected ? '✓ در یخچال' : '+ افزودن'}
-                  </Text>
+                  <View style={styles.selectionTagRow}>
+                    {isSelected ? (
+                      <Ionicons name="checkmark" size={11} color="#0D5C2C" />
+                    ) : (
+                      <Ionicons name="add" size={11} color={COLORS.grayDark} />
+                    )}
+                    <Text style={styles.selectionTagText}>
+                      {isSelected ? 'در یخچال' : 'افزودن'}
+                    </Text>
+                  </View>
                 </View>
 
                 {/* Icon */}
@@ -158,7 +171,7 @@ export const ItemSelectionStep: React.FC<ItemSelectionStepProps> = ({
                       }}
                       style={styles.counterBtn}
                     >
-                      <Text style={styles.counterBtnText}>+</Text>
+                      <RetroAddIcon size={13} color={COLORS.black} />
                     </Pressable>
 
                     <Text style={styles.quantityText}>
@@ -172,7 +185,7 @@ export const ItemSelectionStep: React.FC<ItemSelectionStepProps> = ({
                       }}
                       style={styles.counterBtn}
                     >
-                      <Text style={styles.counterBtnText}>-</Text>
+                      <RetroRemoveIcon size={13} color={COLORS.black} />
                     </Pressable>
                   </View>
                 ) : (
@@ -188,7 +201,8 @@ export const ItemSelectionStep: React.FC<ItemSelectionStepProps> = ({
         {/* Add custom ingredient button */}
         <View style={styles.customAddRow}>
           <RetroButton
-            label="+ افزودن ماده دلخواه جدید"
+            label="افزودن ماده دلخواه جدید"
+            icon={<RetroAddIcon size={15} color={COLORS.black} />}
             variant="lavender"
             onPress={onOpenAddModal}
             size="sm"
@@ -199,7 +213,8 @@ export const ItemSelectionStep: React.FC<ItemSelectionStepProps> = ({
         {/* Bottom Actions */}
         <View style={styles.bottomActions}>
           <RetroButton
-            label="🍽️ دریافت غذای پیشنهادی بر اساس این اقلام ⬅️"
+            label="دریافت غذای پیشنهادی بر اساس این اقلام"
+            icon={<MaterialCommunityIcons name="pot-steam" size={20} color={COLORS.black} />}
             variant="primary"
             onPress={onConfirmSelection}
             disabled={selectedCount === 0}
@@ -208,7 +223,8 @@ export const ItemSelectionStep: React.FC<ItemSelectionStepProps> = ({
           />
 
           <RetroButton
-            label="⬅️ بازگشت به ویرایش نام یخچال"
+            label="بازگشت به ویرایش نام یخچال"
+            icon={<Ionicons name="arrow-forward" size={14} color={COLORS.black} />}
             variant="secondary"
             onPress={onBackToFridgeName}
             size="sm"
@@ -328,6 +344,11 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     borderWidth: 1,
     borderColor: COLORS.black,
+  },
+  selectionTagRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 3,
   },
   tagSelected: {
     backgroundColor: COLORS.green,

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 import { toPersianDigits } from '../../utils/persian';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 
 export type HomeStep = 'build_fridge' | 'select_items' | 'suggestion_and_items';
 
@@ -18,24 +19,33 @@ export const StepWizardBar: React.FC<StepWizardBarProps> = ({
   isFridgeCreated,
   selectedItemsCount,
 }) => {
-  const steps: { key: HomeStep; label: string; stepNumber: number; enabled: boolean }[] = [
+  const steps: {
+    key: HomeStep;
+    label: string;
+    stepNumber: number;
+    enabled: boolean;
+    icon: (color: string) => React.ReactNode;
+  }[] = [
     {
       key: 'build_fridge',
       label: '۱. ساخت یخچال',
       stepNumber: 1,
       enabled: true,
+      icon: (color) => <MaterialCommunityIcons name="fridge-outline" size={13} color={color} />,
     },
     {
       key: 'select_items',
       label: '۲. انتخاب اقلام',
       stepNumber: 2,
       enabled: isFridgeCreated,
+      icon: (color) => <MaterialCommunityIcons name="format-list-checks" size={13} color={color} />,
     },
     {
       key: 'suggestion_and_items',
       label: '۳. پیشنهاد غذا',
       stepNumber: 3,
       enabled: isFridgeCreated && selectedItemsCount > 0,
+      icon: (color) => <MaterialCommunityIcons name="pot-steam-outline" size={13} color={color} />,
     },
   ];
 
@@ -47,6 +57,7 @@ export const StepWizardBar: React.FC<StepWizardBarProps> = ({
           const isDone =
             (step.key === 'build_fridge' && isFridgeCreated) ||
             (step.key === 'select_items' && currentStep === 'suggestion_and_items');
+          const iconColor = isActive ? COLORS.black : COLORS.grayDark;
 
           return (
             <Pressable
@@ -61,17 +72,24 @@ export const StepWizardBar: React.FC<StepWizardBarProps> = ({
                 pressed && step.enabled && styles.stepItemPressed,
               ]}
             >
-              <Text
-                style={[
-                  styles.stepText,
-                  isActive && styles.stepTextActive,
-                  isDone && !isActive && styles.stepTextDone,
-                  !step.enabled && styles.stepTextDisabled,
-                ]}
-                numberOfLines={1}
-              >
-                {step.label}
-              </Text>
+              <View style={styles.stepContentRow}>
+                {isDone && !isActive ? (
+                  <Ionicons name="checkmark-circle" size={12} color="#2E7D32" />
+                ) : (
+                  step.icon(iconColor)
+                )}
+                <Text
+                  style={[
+                    styles.stepText,
+                    isActive && styles.stepTextActive,
+                    isDone && !isActive && styles.stepTextDone,
+                    !step.enabled && styles.stepTextDisabled,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {step.label}
+                </Text>
+              </View>
             </Pressable>
           );
         })}
@@ -100,6 +118,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...RETRO_SHADOW.sm,
+  },
+  stepContentRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
   stepItemActive: {
     backgroundColor: COLORS.orange,

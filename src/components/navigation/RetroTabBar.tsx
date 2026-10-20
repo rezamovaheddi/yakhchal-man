@@ -19,17 +19,17 @@ export const RetroTabBar: React.FC<RetroTabBarProps> = ({
     {
       key: 'home',
       label: 'خانه',
-      icon: (isActive) => <RetroHomeIcon size={20} color={COLORS.black} />,
+      icon: (isActive) => <RetroHomeIcon size={20} color={COLORS.black} active={isActive} />,
     },
     {
       key: 'cooking',
       label: 'آشپزی',
-      icon: (isActive) => <RetroCookingIcon size={20} color={COLORS.black} />,
+      icon: (isActive) => <RetroCookingIcon size={22} color={COLORS.black} active={isActive} />,
     },
     {
       key: 'recipes',
       label: 'دستور پخت',
-      icon: (isActive) => <RetroBookIcon size={20} color={COLORS.black} />,
+      icon: (isActive) => <RetroBookIcon size={20} color={COLORS.black} active={isActive} />,
     },
   ];
 

@@ -12,6 +12,13 @@ import { AvatarRenderer } from '../icons/AvatarIcons';
 import { UserAccount } from '../../types';
 import { toPersianDigits } from '../../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
+import {
+  RetroSparkleIcon,
+  RetroRefreshIcon,
+  RetroUserIcon,
+  RetroLogoutIcon,
+  RetroCloseIcon,
+} from '../icons/RetroIcons';
 
 interface UserProfileModalProps {
   visible: boolean;
@@ -58,7 +65,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <Text style={styles.usernameText}>@{user.username}</Text>
                   <View style={styles.badgeRow}>
                     <RetroBadge
-                      label="سرآشپز فعال ✨"
+                      label="سرآشپز فعال"
+                      icon={<RetroSparkleIcon size={12} color={COLORS.orange} />}
                       color={COLORS.yellow}
                     />
                   </View>
@@ -89,7 +97,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <View style={styles.actions}>
                 {onCheckUpdates && (
                   <RetroButton
-                    label="بررسی به‌روزرسانی برنامه 🔄"
+                    label="بررسی به‌روزرسانی برنامه"
+                    icon={<RetroRefreshIcon size={15} color={COLORS.black} />}
                     variant="primary"
                     onPress={onCheckUpdates}
                     size="md"
@@ -97,14 +106,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 )}
 
                 <RetroButton
-                  label="تعویض حساب کاربری 👤"
+                  label="تعویض حساب کاربری"
+                  icon={<RetroUserIcon size={16} color={COLORS.black} />}
                   variant="secondary"
                   onPress={onSwitchAccount}
                   size="md"
                 />
 
                 <RetroButton
-                  label="خروج از حساب 🚪"
+                  label="خروج از حساب"
+                  icon={<RetroLogoutIcon size={16} color={COLORS.white} />}
                   variant="danger"
                   onPress={onLogout}
                   size="md"
@@ -112,6 +123,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
                 <RetroButton
                   label="بستن پنجره"
+                  icon={<RetroCloseIcon size={12} color={COLORS.black} />}
                   variant="primary"
                   onPress={onClose}
                   size="sm"
