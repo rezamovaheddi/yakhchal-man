@@ -3,10 +3,10 @@ import { getAiRecipeSuggestions } from '../services/aiRecipeService';
 import { Ingredient } from '../types';
 
 describe('aiRecipeService', () => {
-  const originalFetch = global.fetch;
+  const originalFetch = (globalThis as any).fetch;
 
   afterEach(() => {
-    global.fetch = originalFetch;
+    (globalThis as any).fetch = originalFetch;
     jest.clearAllMocks();
   });
 
@@ -79,7 +79,7 @@ describe('aiRecipeService', () => {
       },
     ];
 
-    (global as any).fetch = (jest.fn() as any).mockResolvedValueOnce({
+    (globalThis as any).fetch = (jest.fn() as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         success: true,
@@ -111,7 +111,7 @@ describe('aiRecipeService', () => {
       ],
     });
 
-    (global as any).fetch = jest.fn((url: any) => {
+    (globalThis as any).fetch = jest.fn((url: any) => {
       const urlStr = String(url);
       if (urlStr.includes('generativelanguage.googleapis.com')) {
         return Promise.resolve({

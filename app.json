@@ -15,7 +15,7 @@
     },
     "android": {
       "package": "com.rezamovaheddi.yakhchalman",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
         "REQUEST_INSTALL_PACKAGES"
       ],

@@ -62,7 +62,7 @@ export const AiChefModal: React.FC<AiChefModalProps> = ({
   const [loadingMsgIndex, setLoadingMsgIndex] = useState<number>(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Rotating loading messages
   useEffect(() => {

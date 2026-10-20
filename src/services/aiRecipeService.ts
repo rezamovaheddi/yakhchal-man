@@ -91,7 +91,7 @@ export async function getAiRecipeSuggestions(
   // 1. Try dedicated Backend Server / Cloudflare Tunnel
   const backendUrls = getBackendUrls();
   for (const url of backendUrls) {
-    let timeoutId: NodeJS.Timeout | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     try {
       const controller = new AbortController();
       timeoutId = setTimeout(() => controller.abort(), 5000);
