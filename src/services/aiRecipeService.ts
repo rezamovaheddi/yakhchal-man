@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { Ingredient } from '../types';
+import { Ingredient, UserAccount } from '../types';
 
 export interface AiRecipeSuggestion {
   id: string;
@@ -20,6 +20,7 @@ export interface AiRecipeResponse {
   error?: string;
   source?: 'backend' | 'cloudflare_tunnel' | 'direct_gemini';
   connectedUrl?: string;
+  databaseSynced?: boolean;
 }
 
 export const CLOUDFLARE_TUNNEL_ID = '9d434a06-3486-4303-98dd-479105d6a5d8';
@@ -55,6 +56,50 @@ export const getBackendUrls = (): string[] => {
   ].filter(Boolean) as string[];
 };
 
+/**
+ * Synchronize user's fridge and items into backend database
+ */
+export async function syncFridgeToDatabase(
+  user: UserAccount,
+  fridgeName: string,
+  inventory: Ingredient[],
+  antiWasteStats?: any
+): Promise<{ success: boolean; message?: string }> {
+  const backendUrls = getBackendUrls();
+  const payload = {
+    userId: user.id,
+    username: user.name,
+    fridgeName,
+    inventory,
+    antiWasteStats,
+  };
+
+  for (const baseEndpoint of backendUrls) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const syncUrl = baseEndpoint.replace(/\/api\/ai\/suggest$/, '/api/user/fridge');
+      const controller = new AbortController();
+      timer = setTimeout(() => controller.abort(), 4000);
+
+      const res = await fetch(syncUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      if (res.ok) {
+        return { success: true, message: 'اطلاعات در دیتابیس ثبت شد.' };
+      }
+    } catch {
+      // try next url
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+  return { success: false, message: 'امکان اتصال به سرور جهت ذخیره در دیتابیس مهیا نشد.' };
+}
+
 // Direct fallback configuration (loaded from environment variable if configured)
 const DIRECT_GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
 const DIRECT_GEMINI_MODEL = process.env.EXPO_PUBLIC_GEMINI_MODEL || 'gemini-3.5-flash-lite';
@@ -68,7 +113,9 @@ const DIRECT_GEMINI_MODEL = process.env.EXPO_PUBLIC_GEMINI_MODEL || 'gemini-3.5-
 export async function getAiRecipeSuggestions(
   ingredients: Ingredient[],
   preferences?: string,
-  directApiKey?: string
+  directApiKey?: string,
+  user?: UserAccount | null,
+  fridgeName?: string
 ): Promise<AiRecipeResponse> {
   if (!ingredients || ingredients.length === 0) {
     return {
@@ -86,6 +133,9 @@ export async function getAiRecipeSuggestions(
       storageLocation: item.storageLocation,
     })),
     preferences,
+    userId: user?.id,
+    username: user?.name,
+    fridgeName,
   };
 
   // 1. Try dedicated Backend Server / Cloudflare Tunnel

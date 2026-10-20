@@ -54,7 +54,7 @@ export interface Recipe {
   category: string;
 }
 
-export type TabType = 'home' | 'cooking' | 'recipes';
+export type TabType = 'home' | 'cooking' | 'recipes' | 'ai-chef';
 
 export interface ToastMessage {
   id: string;

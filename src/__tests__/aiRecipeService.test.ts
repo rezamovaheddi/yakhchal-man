@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, afterEach } from '@jest/globals';
-import { getAiRecipeSuggestions } from '../services/aiRecipeService';
+import { getAiRecipeSuggestions, syncFridgeToDatabase } from '../services/aiRecipeService';
 import { Ingredient } from '../types';
 
 describe('aiRecipeService', () => {
@@ -135,5 +135,26 @@ describe('aiRecipeService', () => {
     expect(res.source).toBe('direct_gemini');
     expect(res.suggestions).toHaveLength(1);
     expect(res.suggestions?.[0].title).toBe('املت گوجه فرنگی رستورانی');
+  });
+
+  it('should sync user fridge to database successfully', async () => {
+    (globalThis as any).fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: async () => ({ success: true, message: 'ثبت شد' }),
+      })
+    );
+
+    const mockUser = {
+      id: 'usr-1',
+      name: 'رضا',
+      username: 'reza',
+      password: '123',
+      avatar: 'chef',
+      createdAt: '2026-10-20',
+    };
+
+    const res = await syncFridgeToDatabase(mockUser, 'یخچال من', sampleIngredients);
+    expect(res.success).toBe(true);
   });
 });

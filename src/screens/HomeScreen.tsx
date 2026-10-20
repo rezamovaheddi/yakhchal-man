@@ -53,6 +53,7 @@ interface HomeScreenProps {
   onConsumeItem?: (id: string) => void;
   onWasteItem?: (id: string) => void;
   onNavigateToCooking?: () => void;
+  onNavigateToAiChef?: () => void;
   onOpenAiChef?: () => void;
 }
 
@@ -88,6 +89,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onConsumeItem,
   onWasteItem,
   onNavigateToCooking,
+  onNavigateToAiChef,
   onOpenAiChef,
 }) => {
   return (
@@ -178,9 +180,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
 
           {/* AI Chef LLM Action Banner */}
-          {onOpenAiChef && (
+          {(onNavigateToAiChef || onOpenAiChef) && (
             <Pressable
-              onPress={onOpenAiChef}
+              onPress={onNavigateToAiChef || onOpenAiChef}
               style={({ pressed }) => [
                 styles.aiChefCard,
                 pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },

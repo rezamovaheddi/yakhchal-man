@@ -58,43 +58,22 @@ npm start
 GET http://localhost:3001/health
 ```
 
-#### ۲. دریافت ۳ پیشنهاد غذا از هوش مصنوعی (`POST /api/ai/suggest`):
+#### ۳. ثبت اطلاعات یخچال و اقلام کاربر در پایگاه داده (`POST /api/user/fridge`):
 ```http
-POST http://localhost:3001/api/ai/suggest
+POST http://localhost:3001/api/user/fridge
 Content-Type: application/json
 
 {
-  "ingredients": [
-    { "name": "تخم‌مرغ", "quantity": 3, "unit": "عدد" },
-    { "name": "گوجه‌فرنگی", "quantity": 2, "unit": "عدد" },
-    { "name": "پیاز", "quantity": 1, "unit": "عدد" }
+  "userId": "usr-123",
+  "username": "رضا",
+  "fridgeName": "یخچال خونه ما",
+  "inventory": [
+    { "name": "شیر", "quantity": 1, "unit": "لیتر" }
   ]
 }
 ```
-پاسخ خروجی:
-```json
-{
-  "success": true,
-  "model": "gemini-3.5-flash-lite",
-  "count": 3,
-  "suggestions": [
-    {
-      "id": "ai-1",
-      "title": "املت گوجه‌فرنگی سنتی",
-      "description": "املت خوش‌رنگ و لذیذ با گوجه تازه و تخم‌مرغ",
-      "prepTime": "۱۵ دقیقه",
-      "difficulty": "آسان",
-      "category": "صبحانه و شام",
-      "iconName": "egg",
-      "matchedIngredients": ["تخم‌مرغ", "گوجه‌فرنگی", "پیاز"],
-      "missingIngredients": ["روغن", "فلفل سیاه"],
-      "instructions": [
-        "پیاز و گوجه‌ها را ریز خرد کرده و در تابه تفت دهید.",
-        "پس از نرم شدن گوجه‌ها، تخم‌مرغ‌ها را افزوده و هم بزنید.",
-        "با نان گرم سرو کنید."
-      ]
-    }
-    // ... ۲ پیشنهاد دیگر
-  ]
-}
+
+#### ۴. دریافت اطلاعات ذخیره‌شده کاربر از پایگاه داده (`GET /api/user/fridge/:userId`):
+```http
+GET http://localhost:3001/api/user/fridge/usr-123
 ```

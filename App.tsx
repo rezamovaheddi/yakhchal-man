@@ -36,6 +36,7 @@ import { checkForAppUpdates } from './src/utils/updateService';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { CookingScreen } from './src/screens/CookingScreen';
 import { RecipesScreen } from './src/screens/RecipesScreen';
+import { AiChefScreen } from './src/screens/AiChefScreen';
 import { RetroTabBar } from './src/components/navigation/RetroTabBar';
 import { AddIngredientModal } from './src/components/modals/AddIngredientModal';
 import { RecipeDetailsModal } from './src/components/modals/RecipeDetailsModal';
@@ -520,7 +521,8 @@ function MainApp() {
             onConsumeItem={handleConsumeItem}
             onWasteItem={handleWasteItem}
             onNavigateToCooking={() => setCurrentTab('cooking')}
-            onOpenAiChef={() => setIsAiChefModalOpen(true)}
+            onNavigateToAiChef={() => setCurrentTab('ai-chef')}
+            onOpenAiChef={() => setCurrentTab('ai-chef')}
           />
         )}
 
@@ -529,7 +531,17 @@ function MainApp() {
             recipes={RECIPES}
             inventory={ingredients}
             onViewInstructions={(r) => setSelectedRecipeModal(r)}
-            onOpenAiChef={() => setIsAiChefModalOpen(true)}
+            onNavigateToAiChef={() => setCurrentTab('ai-chef')}
+            onOpenAiChef={() => setCurrentTab('ai-chef')}
+          />
+        )}
+
+        {currentTab === 'ai-chef' && (
+          <AiChefScreen
+            inventory={ingredients}
+            fridgeName={fridgeName}
+            currentUser={currentUser}
+            onOpenAuth={() => setIsAuthModalOpen(true)}
           />
         )}
 

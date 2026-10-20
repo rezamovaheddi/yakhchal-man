@@ -27,6 +27,7 @@ interface CookingScreenProps {
   recipes: Recipe[];
   inventory: Ingredient[];
   onViewInstructions: (recipe: Recipe) => void;
+  onNavigateToAiChef?: () => void;
   onOpenAiChef?: () => void;
 }
 
@@ -66,6 +67,7 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
   recipes,
   inventory,
   onViewInstructions,
+  onNavigateToAiChef,
   onOpenAiChef,
 }) => {
   const [filterMode, setFilterMode] = useState<'all' | 'available'>('all');
@@ -107,9 +109,9 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
         </View>
 
         {/* AI Chef Banner */}
-        {onOpenAiChef && (
+        {(onNavigateToAiChef || onOpenAiChef) && (
           <Pressable
-            onPress={onOpenAiChef}
+            onPress={onNavigateToAiChef || onOpenAiChef}
             style={({ pressed }) => [
               styles.aiChefBar,
               pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },

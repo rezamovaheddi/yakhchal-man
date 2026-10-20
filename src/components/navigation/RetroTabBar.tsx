@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { TabType } from '../../types';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 import { RetroHomeIcon, RetroCookingIcon, RetroBookIcon } from '../icons/RetroIcons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface RetroTabBarProps {
   currentTab: TabType;
@@ -19,17 +20,28 @@ export const RetroTabBar: React.FC<RetroTabBarProps> = ({
     {
       key: 'home',
       label: 'خانه',
-      icon: (isActive) => <RetroHomeIcon size={20} color={COLORS.black} active={isActive} />,
+      icon: (isActive) => <RetroHomeIcon size={18} color={COLORS.black} active={isActive} />,
     },
     {
       key: 'cooking',
       label: 'آشپزی',
-      icon: (isActive) => <RetroCookingIcon size={22} color={COLORS.black} active={isActive} />,
+      icon: (isActive) => <RetroCookingIcon size={18} color={COLORS.black} active={isActive} />,
+    },
+    {
+      key: 'ai-chef',
+      label: 'سرآشپز AI',
+      icon: (isActive) => (
+        <MaterialCommunityIcons
+          name={isActive ? 'robot' : 'robot-outline'}
+          size={19}
+          color={COLORS.black}
+        />
+      ),
     },
     {
       key: 'recipes',
       label: 'دستور پخت',
-      icon: (isActive) => <RetroBookIcon size={20} color={COLORS.black} active={isActive} />,
+      icon: (isActive) => <RetroBookIcon size={18} color={COLORS.black} active={isActive} />,
     },
   ];
 
@@ -70,22 +82,22 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bg,
     borderTopWidth: BORDER.thick,
     borderTopColor: COLORS.black,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingTop: 8,
   },
   toolbarContainer: {
-    flexDirection: 'row-reverse', // Persian RTL order: خانه (right), آشپزی (center), دستور پخت (left)
+    flexDirection: 'row-reverse', // Persian RTL order
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 6,
   },
   tabButton: {
     flex: 1,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    gap: 4,
+    paddingVertical: 9,
+    paddingHorizontal: 4,
     borderWidth: BORDER.thick,
     borderColor: COLORS.black,
     borderRadius: BORDER.radiusSm,
@@ -103,10 +115,10 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   iconWrapper: {
-    marginLeft: 2,
+    marginLeft: 1,
   },
   tabLabel: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '800',
   },
   tabLabelActive: {

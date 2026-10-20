@@ -1,8 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -10,30 +16,151 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const CLOUDFLARE_TUNNEL_ID = process.env.CLOUDFLARE_TUNNEL_ID || '9d434a06-3486-4303-98dd-479105d6a5d8';
 
+// Database storage setup
+const DATA_DIR = path.join(__dirname, 'data');
+const DB_FILE = path.join(DATA_DIR, 'database.json');
+
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function loadDatabase() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const content = fs.readFileSync(DB_FILE, 'utf-8');
+      return JSON.parse(content);
+    }
+  } catch (err) {
+    console.error('Error reading database file:', err);
+  }
+  return { users: {}, fridges: {}, logs: [] };
+}
+
+function saveDatabase(data) {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving database file:', err);
+  }
+}
+
 app.use(cors());
 app.use(express.json());
 
 // Health Check Endpoint
 app.get('/health', (req, res) => {
+  const db = loadDatabase();
+  const registeredUsersCount = Object.keys(db.users || {}).length;
   res.json({
     status: 'ok',
     service: 'yakhchal-man-ai-backend',
     model: GEMINI_MODEL,
     cloudflareTunnelId: CLOUDFLARE_TUNNEL_ID,
+    databaseUsersCount: registeredUsersCount,
     time: new Date().toISOString(),
   });
+});
+
+// Save / Sync User Fridge and Ingredients to Database
+app.post('/api/user/fridge', (req, res) => {
+  try {
+    const { userId, username, fridgeName, inventory = [], antiWasteStats } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'شناسه کاربر الزامی است.',
+      });
+    }
+
+    const db = loadDatabase();
+    db.users = db.users || {};
+    db.users[userId] = {
+      userId,
+      username: username || 'کاربر',
+      fridgeName: fridgeName || 'یخچال من',
+      inventory,
+      antiWasteStats: antiWasteStats || null,
+      itemsCount: Array.isArray(inventory) ? inventory.length : 0,
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveDatabase(db);
+
+    console.log(`💾 اطلاعات یخچال کاربر [${username || userId}] با ${db.users[userId].itemsCount} قلم کالا در دیتابیس ثبت شد.`);
+
+    return res.json({
+      success: true,
+      message: 'اطلاعات یخچال و اقلام در دیتابیس با موفقیت ثبت شد.',
+      data: db.users[userId],
+    });
+  } catch (err) {
+    console.error('Database save error:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'خطا در ثبت اطلاعات در دیتابیس.',
+      details: err?.message,
+    });
+  }
+});
+
+// Get User Fridge Data from Database
+app.get('/api/user/fridge/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const db = loadDatabase();
+    const userData = db.users?.[userId];
+
+    if (!userData) {
+      return res.status(404).json({
+        success: false,
+        error: 'اطلاعات کاربری در پایگاه داده یافت نشد.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: userData,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'خطا در واکشی اطلاعات از دیتابیس.',
+    });
+  }
 });
 
 // AI Recipe Recommendation Endpoint
 app.post('/api/ai/suggest', async (req, res) => {
   try {
-    const { ingredients = [], preferences = '' } = req.body;
+    const { ingredients = [], preferences = '', userId, username, fridgeName } = req.body;
 
     if (!Array.isArray(ingredients) || ingredients.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'لطفاً حداقل یک ماده غذایی از موجودی یخچال ارسال کنید.',
       });
+    }
+
+    // Auto-record / update user fridge and items in database if userId provided
+    if (userId) {
+      try {
+        const db = loadDatabase();
+        db.users = db.users || {};
+        db.users[userId] = {
+          userId,
+          username: username || db.users[userId]?.username || 'کاربر',
+          fridgeName: fridgeName || db.users[userId]?.fridgeName || 'یخچال من',
+          inventory: ingredients,
+          itemsCount: ingredients.length,
+          lastAiRequest: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        saveDatabase(db);
+        console.log(`💾 اقلام یخچال کاربر [${username || userId}] هنگام درخواست سرآشپز در دیتابیس همگام‌سازی شد.`);
+      } catch (e) {
+        console.error('Auto sync to db error:', e.message);
+      }
     }
 
     // Prepare ingredient list string
