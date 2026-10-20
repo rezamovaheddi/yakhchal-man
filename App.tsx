@@ -42,6 +42,7 @@ import { RecipeDetailsModal } from './src/components/modals/RecipeDetailsModal';
 import { AuthModal } from './src/components/modals/AuthModal';
 import { UserProfileModal } from './src/components/modals/UserProfileModal';
 import { AppUpdateModal } from './src/components/modals/AppUpdateModal';
+import { AiChefModal } from './src/components/modals/AiChefModal';
 import { HomeStep } from './src/components/home/StepWizardBar';
 
 // Enable RTL layout
@@ -108,6 +109,7 @@ function MainApp() {
   const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [recommendedRecipeIndex, setRecommendedRecipeIndex] = useState(0);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAiChefModalOpen, setIsAiChefModalOpen] = useState(false);
   const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
@@ -518,6 +520,7 @@ function MainApp() {
             onConsumeItem={handleConsumeItem}
             onWasteItem={handleWasteItem}
             onNavigateToCooking={() => setCurrentTab('cooking')}
+            onOpenAiChef={() => setIsAiChefModalOpen(true)}
           />
         )}
 
@@ -526,6 +529,7 @@ function MainApp() {
             recipes={RECIPES}
             inventory={ingredients}
             onViewInstructions={(r) => setSelectedRecipeModal(r)}
+            onOpenAiChef={() => setIsAiChefModalOpen(true)}
           />
         )}
 
@@ -579,6 +583,13 @@ function MainApp() {
         visible={selectedRecipeModal !== null}
         inventory={ingredients}
         onClose={() => setSelectedRecipeModal(null)}
+      />
+
+      {/* AI Chef LLM Recipe Modal */}
+      <AiChefModal
+        visible={isAiChefModalOpen}
+        inventory={ingredients}
+        onClose={() => setIsAiChefModalOpen(false)}
       />
 
       {/* In-App Update Modal with Retro UI */}

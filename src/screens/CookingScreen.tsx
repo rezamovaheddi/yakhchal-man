@@ -27,6 +27,7 @@ interface CookingScreenProps {
   recipes: Recipe[];
   inventory: Ingredient[];
   onViewInstructions: (recipe: Recipe) => void;
+  onOpenAiChef?: () => void;
 }
 
 const MEAL_TABS: Array<{
@@ -65,6 +66,7 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
   recipes,
   inventory,
   onViewInstructions,
+  onOpenAiChef,
 }) => {
   const [filterMode, setFilterMode] = useState<'all' | 'available'>('all');
   const [mealFilter, setMealFilter] = useState<MealFilter>('همه');
@@ -103,6 +105,30 @@ export const CookingScreen: React.FC<CookingScreenProps> = ({
             </Text>
           </View>
         </View>
+
+        {/* AI Chef Banner */}
+        {onOpenAiChef && (
+          <Pressable
+            onPress={onOpenAiChef}
+            style={({ pressed }) => [
+              styles.aiChefBar,
+              pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },
+            ]}
+          >
+            <View style={styles.aiChefBarInner}>
+              <View style={styles.aiChefBarRight}>
+                <Text style={styles.aiChefBarEmoji}>🤖</Text>
+                <View>
+                  <Text style={styles.aiChefBarTitle}>سرآشپز هوش مصنوعی (LLM)</Text>
+                  <Text style={styles.aiChefBarSub}>۳ پیشنهاد خلاقانه بر اساس مواد موجود در یخچال</Text>
+                </View>
+              </View>
+              <View style={styles.aiChefBarBtn}>
+                <Text style={styles.aiChefBarBtnText}>مشاهده ✨</Text>
+              </View>
+            </View>
+          </Pressable>
+        )}
 
         {/* Filter Switcher: All vs Ready-now */}
         <View style={styles.filterRow}>
@@ -523,5 +549,53 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2E5016',
     textAlign: 'right',
+  },
+  aiChefBar: {
+    backgroundColor: '#FFF2C6',
+    borderWidth: BORDER.regular,
+    borderColor: COLORS.black,
+    borderRadius: BORDER.radiusSm,
+    padding: 8,
+    marginBottom: 10,
+    ...RETRO_SHADOW.sm,
+  },
+  aiChefBarInner: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  aiChefBarRight: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  aiChefBarEmoji: {
+    fontSize: 20,
+  },
+  aiChefBarTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.black,
+    textAlign: 'right',
+  },
+  aiChefBarSub: {
+    fontSize: 10,
+    color: COLORS.grayDark,
+    textAlign: 'right',
+  },
+  aiChefBarBtn: {
+    backgroundColor: COLORS.orange,
+    borderWidth: 1,
+    borderColor: COLORS.black,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    ...RETRO_SHADOW.sm,
+  },
+  aiChefBarBtnText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.white,
   },
 });

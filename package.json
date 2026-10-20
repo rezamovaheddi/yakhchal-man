@@ -33,6 +33,7 @@
     "web": "expo start --web",
     "test": "jest",
     "typecheck": "tsc --noEmit",
+    "server": "node backend/server.js",
     "export:web": "expo export -p web"
   },
   "private": true
