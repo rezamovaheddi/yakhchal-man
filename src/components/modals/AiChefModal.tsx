@@ -57,7 +57,7 @@ export const AiChefModal: React.FC<AiChefModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [suggestions, setSuggestions] = useState<AiRecipeSuggestion[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<'backend' | 'direct_gemini' | null>(null);
+  const [source, setSource] = useState<'backend' | 'cloudflare_tunnel' | 'direct_gemini' | null>(null);
   const [selectedPreference, setSelectedPreference] = useState<string>('');
   const [loadingMsgIndex, setLoadingMsgIndex] = useState<number>(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -245,14 +245,22 @@ export const AiChefModal: React.FC<AiChefModalProps> = ({
                   <View style={styles.sourceBadgeRow}>
                     <View style={styles.sourceBadge}>
                       <Ionicons
-                        name={source === 'backend' ? 'server-outline' : 'sparkles-outline'}
+                        name={
+                          source === 'cloudflare_tunnel'
+                            ? 'cloud-done-outline'
+                            : source === 'backend'
+                            ? 'server-outline'
+                            : 'sparkles-outline'
+                        }
                         size={13}
-                        color={COLORS.grayDark}
+                        color={source === 'cloudflare_tunnel' ? '#0288D1' : COLORS.grayDark}
                       />
                       <Text style={styles.sourceText}>
-                        {source === 'backend'
-                          ? 'پاسخ از بک‌اند سرور پورتی (Node Express)'
-                          : 'پاسخ مستقیم از مدل Gemini 3.5'}
+                        {source === 'cloudflare_tunnel'
+                          ? 'اتصال پایدار از طریق کلادفلر تانل (Cloudflare Tunnel ☁️)'
+                          : source === 'backend'
+                          ? 'پاسخ مستقیم از بک‌اند لوکال (Node Express ⚡)'
+                          : 'پاسخ مستقیم از مدل Gemini 3.5 ✨'}
                       </Text>
                     </View>
                     <Text style={styles.resultCountBadge}>

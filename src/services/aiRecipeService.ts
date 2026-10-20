@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { Ingredient } from '../types';
 
 export interface AiRecipeSuggestion {
@@ -17,25 +18,42 @@ export interface AiRecipeResponse {
   success: boolean;
   suggestions?: AiRecipeSuggestion[];
   error?: string;
-  source?: 'backend' | 'direct_gemini';
+  source?: 'backend' | 'cloudflare_tunnel' | 'direct_gemini';
+  connectedUrl?: string;
 }
 
 export const CLOUDFLARE_TUNNEL_ID = '9d434a06-3486-4303-98dd-479105d6a5d8';
 export const LIVE_CLOUDFLARE_URL = 'https://upon-ideal-compound-seating.trycloudflare.com/api/ai/suggest';
 
-// Backend URLs to try in priority order:
-// 1. Localhost for fast local response (if running on same machine)
-// 2. Custom domain or backend URL if configured in environment
-// 3. Live Cloudflare Tunnel public endpoint (allows mobile APK to connect from anywhere on 4G/WiFi)
-// 4. Cloudflare Argo tunnel endpoint
-// 5. Android Emulator host (10.0.2.2)
-const BACKEND_URLS = [
-  'http://localhost:3001/api/ai/suggest',
-  process.env.EXPO_PUBLIC_BACKEND_URL,
-  LIVE_CLOUDFLARE_URL,
-  `https://${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com/api/ai/suggest`,
-  'http://10.0.2.2:3001/api/ai/suggest',
-].filter(Boolean) as string[];
+/**
+ * Returns list of backend endpoints to query based on device platform.
+ * On Native Mobile (Android APK / iOS), Cloudflare Tunnel is prioritized so requests
+ * never stall or hang on localhost.
+ * On Web / Localhost, direct localhost is tried first.
+ */
+export const getBackendUrls = (): string[] => {
+  const isWeb = typeof Platform !== 'undefined' && Platform.OS === 'web';
+  const customUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+  if (isWeb) {
+    return [
+      'http://localhost:3001/api/ai/suggest',
+      customUrl,
+      LIVE_CLOUDFLARE_URL,
+      `https://${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com/api/ai/suggest`,
+      'http://10.0.2.2:3001/api/ai/suggest',
+    ].filter(Boolean) as string[];
+  }
+
+  // Native Mobile APK (Android / iOS):
+  return [
+    customUrl,
+    LIVE_CLOUDFLARE_URL,
+    `https://${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com/api/ai/suggest`,
+    'http://10.0.2.2:3001/api/ai/suggest',
+    'http://localhost:3001/api/ai/suggest',
+  ].filter(Boolean) as string[];
+};
 
 // Direct fallback configuration (loaded from environment variable if configured)
 const DIRECT_GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
@@ -70,12 +88,13 @@ export async function getAiRecipeSuggestions(
     preferences,
   };
 
-  // 1. Try dedicated Backend Server
-  for (const url of BACKEND_URLS) {
+  // 1. Try dedicated Backend Server / Cloudflare Tunnel
+  const backendUrls = getBackendUrls();
+  for (const url of backendUrls) {
     let timeoutId: NodeJS.Timeout | undefined;
     try {
       const controller = new AbortController();
-      timeoutId = setTimeout(() => controller.abort(), 4000);
+      timeoutId = setTimeout(() => controller.abort(), 5000);
 
       const res = await fetch(url, {
         method: 'POST',
@@ -87,10 +106,12 @@ export async function getAiRecipeSuggestions(
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.suggestions)) {
+          const isCloudflare = url.includes('cloudflare.com') || url.includes('argotunnel.com');
           return {
             success: true,
             suggestions: data.suggestions,
-            source: 'backend',
+            source: isCloudflare ? 'cloudflare_tunnel' : 'backend',
+            connectedUrl: url,
           };
         }
       }

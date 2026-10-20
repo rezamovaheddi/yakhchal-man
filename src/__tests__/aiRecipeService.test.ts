@@ -91,7 +91,7 @@ describe('aiRecipeService', () => {
     expect(res.success).toBe(true);
     expect(res.suggestions).toHaveLength(3);
     expect(res.suggestions?.[0].title).toBe('املت گوجه‌فرنگی سنتی');
-    expect(res.source).toBe('backend');
+    expect(res.source).toBe('cloudflare_tunnel');
   });
 
   it('should fall back to direct gemini if backend fails', async () => {
