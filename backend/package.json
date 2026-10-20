@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "tunnel:quick": "cloudflared tunnel --url http://localhost:3001",
     "tunnel": "cloudflared tunnel --config config.yml run 9d434a06-3486-4303-98dd-479105d6a5d8",
     "tunnel:run": "cloudflared tunnel run 9d434a06-3486-4303-98dd-479105d6a5d8"
   },

@@ -21,15 +21,18 @@ export interface AiRecipeResponse {
 }
 
 export const CLOUDFLARE_TUNNEL_ID = '9d434a06-3486-4303-98dd-479105d6a5d8';
+export const LIVE_CLOUDFLARE_URL = 'https://upon-ideal-compound-seating.trycloudflare.com/api/ai/suggest';
 
 // Backend URLs to try in priority order:
-// 1. Custom domain or backend URL if configured in environment
-// 2. Localhost for fast local response (if running on same machine)
-// 3. Cloudflare Tunnel public endpoint (allows mobile APK to connect from any network/internet)
-// 4. Android Emulator host (10.0.2.2)
+// 1. Localhost for fast local response (if running on same machine)
+// 2. Custom domain or backend URL if configured in environment
+// 3. Live Cloudflare Tunnel public endpoint (allows mobile APK to connect from anywhere on 4G/WiFi)
+// 4. Cloudflare Argo tunnel endpoint
+// 5. Android Emulator host (10.0.2.2)
 const BACKEND_URLS = [
   'http://localhost:3001/api/ai/suggest',
   process.env.EXPO_PUBLIC_BACKEND_URL,
+  LIVE_CLOUDFLARE_URL,
   `https://${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com/api/ai/suggest`,
   'http://10.0.2.2:3001/api/ai/suggest',
 ].filter(Boolean) as string[];
