@@ -8,6 +8,25 @@
 - **کلید API:** مقدار `GEMINI_API_KEY` در فایل `.env`
 - **مدل فعال:** `gemini-3.5-flash-lite` (پاسخ‌دهی سریع، بهینه و با پشتیبانی کامل از زبان فارسی)
 - **پورت پیش‌فرض:** `3001`
+- **شناسه تانل کلادفلر (Cloudflare Tunnel ID):** `9d434a06-3486-4303-98dd-479105d6a5d8`
+
+---
+
+### اتصال با Cloudflare Tunnel:
+برای اتصال سرور لوکال به اینترنت جهت استفاده نسخه APK موبایل در همه‌جا:
+فایل پیکربندی تانل در `backend/config.yml` با شناسه تانل شما آماده شده است.
+
+**روش اول (با فایل Credentials):**
+فایل `9d434a06-3486-4303-98dd-479105d6a5d8.json` دریافتی از کلادفلر را در پوشه `backend/` قرار دهید و اجرا کنید:
+```bash
+npm run tunnel
+```
+
+**روش دوم (با توکن کلادفلر):**
+اگر از داشبورد Cloudflare Zero Trust توکن (Token) دارید:
+```bash
+npx cloudflared tunnel run --token YOUR_CLOUDFLARE_TUNNEL_TOKEN
+```
 
 ---
 

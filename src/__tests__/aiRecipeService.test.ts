@@ -111,23 +111,24 @@ describe('aiRecipeService', () => {
       ],
     });
 
-    (global as any).fetch = (jest.fn<any>() as any)
-      // First 2 calls fail (backend localhost & 10.0.2.2)
-      .mockRejectedValueOnce(new Error('Connection refused'))
-      .mockRejectedValueOnce(new Error('Connection refused'))
-      // 3rd call succeeds (direct gemini)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          candidates: [
-            {
-              content: {
-                parts: [{ text: mockGeminiJson }],
+    (global as any).fetch = jest.fn((url: any) => {
+      const urlStr = String(url);
+      if (urlStr.includes('generativelanguage.googleapis.com')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            candidates: [
+              {
+                content: {
+                  parts: [{ text: mockGeminiJson }],
+                },
               },
-            },
-          ],
-        }),
-      });
+            ],
+          }),
+        });
+      }
+      return Promise.reject(new Error('Connection refused'));
+    });
 
     const res = await getAiRecipeSuggestions(sampleIngredients, undefined, 'test-gemini-key');
     expect(res.success).toBe(true);

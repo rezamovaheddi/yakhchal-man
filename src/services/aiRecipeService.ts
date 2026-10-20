@@ -20,12 +20,19 @@ export interface AiRecipeResponse {
   source?: 'backend' | 'direct_gemini';
 }
 
-// Default backend URLs to try (Node backend on port 3001)
-// For Android emulator: 10.0.2.2, for web/local: localhost
+export const CLOUDFLARE_TUNNEL_ID = '9d434a06-3486-4303-98dd-479105d6a5d8';
+
+// Backend URLs to try in priority order:
+// 1. Custom domain or backend URL if configured in environment
+// 2. Localhost for fast local response (if running on same machine)
+// 3. Cloudflare Tunnel public endpoint (allows mobile APK to connect from any network/internet)
+// 4. Android Emulator host (10.0.2.2)
 const BACKEND_URLS = [
   'http://localhost:3001/api/ai/suggest',
+  process.env.EXPO_PUBLIC_BACKEND_URL,
+  `https://${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com/api/ai/suggest`,
   'http://10.0.2.2:3001/api/ai/suggest',
-];
+].filter(Boolean) as string[];
 
 // Direct fallback configuration (loaded from environment variable if configured)
 const DIRECT_GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';

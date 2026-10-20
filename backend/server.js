@@ -8,6 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+const CLOUDFLARE_TUNNEL_ID = process.env.CLOUDFLARE_TUNNEL_ID || '9d434a06-3486-4303-98dd-479105d6a5d8';
 
 app.use(cors());
 app.use(express.json());
@@ -18,6 +19,7 @@ app.get('/health', (req, res) => {
     status: 'ok',
     service: 'yakhchal-man-ai-backend',
     model: GEMINI_MODEL,
+    cloudflareTunnelId: CLOUDFLARE_TUNNEL_ID,
     time: new Date().toISOString(),
   });
 });
@@ -163,4 +165,5 @@ app.listen(PORT, () => {
   console.log(`🚀 سرور هوش مصنوعی یخچال من روی پورت ${PORT} با مدل ${GEMINI_MODEL} فعال شد.`);
   console.log(`📡 آدرس سلامت: http://localhost:${PORT}/health`);
   console.log(`🍲 اندپوینت پیشنهاد غذا: POST http://localhost:${PORT}/api/ai/suggest`);
+  console.log(`🌐 Cloudflare Tunnel ID: ${CLOUDFLARE_TUNNEL_ID}`);
 });
