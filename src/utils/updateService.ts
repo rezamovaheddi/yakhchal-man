@@ -3,7 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { AppReleaseInfo } from '../types';
 
-export const CURRENT_APP_VERSION = '1.1.0';
+export const CURRENT_APP_VERSION = '1.2.0';
 
 // GitHub repository info for fetching latest release
 const GITHUB_OWNER = 'rezamovaheddi';

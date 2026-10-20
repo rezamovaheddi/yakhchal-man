@@ -11,21 +11,21 @@ describe('updateService', () => {
     expect(compareVersions('1.1.0', '1.1.1')).toBe(-1);
   });
 
-  test('CURRENT_APP_VERSION is 1.1.0', () => {
-    expect(CURRENT_APP_VERSION).toBe('1.1.0');
+  test('CURRENT_APP_VERSION is 1.2.0', () => {
+    expect(CURRENT_APP_VERSION).toBe('1.2.0');
   });
 
   test('checkForAppUpdates handles successful fetch with newer version', async () => {
     const mockRelease = {
-      tag_name: 'v1.2.0',
-      name: 'یخچال من نسخه ۱.۲.۰',
+      tag_name: 'v1.3.0',
+      name: 'یخچال من نسخه ۱.۳.۰',
       body: 'بهبود رتبه‌بندی غذا و به‌روزرسانی درون‌برنامه‌ای',
       published_at: '2026-10-18T10:00:00Z',
-      html_url: 'https://github.com/rezamovaheddi/yakhchal-man/releases/tag/v1.2.0',
+      html_url: 'https://github.com/rezamovaheddi/yakhchal-man/releases/tag/v1.3.0',
       assets: [
         {
           name: 'yakhchal-man.apk',
-          browser_download_url: 'https://github.com/rezamovaheddi/yakhchal-man/releases/download/v1.2.0/app.apk',
+          browser_download_url: 'https://github.com/rezamovaheddi/yakhchal-man/releases/download/v1.3.0/app.apk',
         },
       ],
     };
@@ -42,19 +42,19 @@ describe('updateService', () => {
 
     const res = await checkForAppUpdates();
     expect(res.updateAvailable).toBe(true);
-    expect(res.latestRelease?.version).toBe('1.2.0');
-    expect(res.latestRelease?.title).toBe('یخچال من نسخه ۱.۲.۰');
+    expect(res.latestRelease?.version).toBe('1.3.0');
+    expect(res.latestRelease?.title).toBe('یخچال من نسخه ۱.۳.۰');
     expect(res.latestRelease?.downloadUrl).toBe(
-      'https://github.com/rezamovaheddi/yakhchal-man/releases/download/v1.2.0/app.apk'
+      'https://github.com/rezamovaheddi/yakhchal-man/releases/download/v1.3.0/app.apk'
     );
   });
 
   test('checkForAppUpdates handles current version equal or newer', async () => {
     const mockRelease = {
-      tag_name: 'v1.1.0',
-      name: 'یخچال من نسخه ۱.۱.۰',
+      tag_name: 'v1.2.0',
+      name: 'یخچال من نسخه ۱.۲.۰',
       body: 'نسخه فعلی',
-      html_url: 'https://github.com/rezamovaheddi/yakhchal-man/releases/tag/v1.1.0',
+      html_url: 'https://github.com/rezamovaheddi/yakhchal-man/releases/tag/v1.2.0',
     };
 
     // @ts-ignore
