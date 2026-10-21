@@ -23,14 +23,13 @@ export interface AiRecipeResponse {
   databaseSynced?: boolean;
 }
 
+export const PRODUCTION_BACKEND_URL = 'https://yakhchal-man.onrender.com/api/ai/suggest';
 export const CLOUDFLARE_TUNNEL_ID = '9d434a06-3486-4303-98dd-479105d6a5d8';
 export const LIVE_CLOUDFLARE_URL = 'https://upon-ideal-compound-seating.trycloudflare.com/api/ai/suggest';
 
 /**
  * Returns list of backend endpoints to query based on device platform.
- * On Native Mobile (Android APK / iOS), Cloudflare Tunnel is prioritized so requests
- * never stall or hang on localhost.
- * On Web / Localhost, direct localhost is tried first.
+ * Render 24/7 cloud server is prioritized so requests are always handled reliably.
  */
 export const getBackendUrls = (): string[] => {
   const isWeb = typeof Platform !== 'undefined' && Platform.OS === 'web';
@@ -38,6 +37,7 @@ export const getBackendUrls = (): string[] => {
 
   if (isWeb) {
     return [
+      PRODUCTION_BACKEND_URL,
       'http://localhost:3001/api/ai/suggest',
       customUrl,
       LIVE_CLOUDFLARE_URL,
@@ -48,6 +48,7 @@ export const getBackendUrls = (): string[] => {
 
   // Native Mobile APK (Android / iOS):
   return [
+    PRODUCTION_BACKEND_URL,
     customUrl,
     LIVE_CLOUDFLARE_URL,
     `https://${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com/api/ai/suggest`,
