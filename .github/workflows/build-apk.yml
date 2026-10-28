@@ -1,9 +1,8 @@
-name: Build and Release Android APK
+name: Test, Build and Release Android APK
 
 on:
   push:
     branches:
-      - master
       - main
     tags:
       - 'v*'
@@ -12,11 +11,43 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  test:
+    name: Test, Typecheck & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      - name: 🧪 Run Unit Tests
+        run: npm test
+
+      - name: 🔍 Run TypeScript Check
+        run: npm run typecheck
+
+      - name: 🧹 Run Lint
+        run: npm run lint
+
   build-apk:
     name: Build Android APK
+    needs: test
+    # Releases are only built for version tags (v*) or manual dispatch —
+    # every push to main no longer spams GitHub Releases.
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-
     steps:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
@@ -34,33 +65,50 @@ jobs:
           cache: 'npm'
 
       - name: 📦 Install Dependencies
-        run: npm ci || npm install
+        run: npm ci
 
-      - name: 🧪 Run Unit Tests
-        run: npm test
-
-      - name: 🔍 Run TypeScript Check
-        run: npm run typecheck
+      - name: 🏷️ Sync version from tag & bump versionCode
+        run: node scripts/bump-version-code.cjs
 
       - name: ⚙️ Expo Prebuild (Generate Android Project)
         run: npx expo prebuild --platform android --no-install
 
-      - name: 🔨 Build Android APK (Release & Debug)
+      - name: 🔐 Decode Release Keystore (if provided)
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+            echo "Keystore decoded to android/app/release.keystore"
+          else
+            echo "No ANDROID_KEYSTORE_BASE64 secret — falling back to template debug signing."
+          fi
+
+      - name: 🔐 Apply Release Signing Config
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: node scripts/apply-release-signing.cjs
+
+      - name: 🔨 Build Android APK (Release)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
+
+      - name: ✅ Verify Signed Release APK Exists
+        run: |
+          if [ ! -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
+            echo "::error::Signed release APK not found — refusing to ship an unsigned/debug artifact."
+            exit 1
+          fi
 
       - name: 📋 Copy Built APK
         run: |
           mkdir -p build-output
-          if [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
-            cp android/app/build/outputs/apk/release/app-release.apk build-output/yakhchal-man.apk
-          elif [ -f "android/app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
-            cp android/app/build/outputs/apk/release/app-release-unsigned.apk build-output/yakhchal-man.apk
-          else
-            cp android/app/build/outputs/apk/debug/app-debug.apk build-output/yakhchal-man.apk
-          fi
+          cp android/app/build/outputs/apk/release/app-release.apk build-output/yakhchal-man.apk
 
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -68,42 +116,31 @@ jobs:
           name: yakhchal-man-apk
           path: build-output/yakhchal-man.apk
 
-      - name: 🏷️ Determine Release Tag and Title
+      - name: 🏷️ Determine Release Tag
         id: release_info
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            TAG_NAME="${{ github.ref_name }}"
-            RELEASE_NAME="یخچال من (My Fridge) - ${TAG_NAME}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF_NAME}"
           else
-            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-            TAG_NAME="v1.1.${{ github.run_number }}"
-            RELEASE_NAME="یخچال من (My Fridge) - ${TAG_NAME} (${SHORT_SHA})"
+            VERSION=$(node -p "require('./app.json').expo.version")
+            TAG_NAME="v${VERSION}-ci${GITHUB_RUN_NUMBER}"
           fi
-          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
-          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "release_name=یخچال من (My Fridge) - ${TAG_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: 🚀 Create GitHub Release with APK
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
         with:
           tag_name: ${{ steps.release_info.outputs.tag_name }}
           name: ${{ steps.release_info.outputs.release_name }}
           body: |
-            ## 🍳 اپلیکیشن فارسی «یخچال من» (My Fridge) - نسخه جدید ${{ steps.release_info.outputs.tag_name }}
-            طراحی شده با الهام از رابط کاربری رترو سیستم‌عامل‌های دهه ۱۹۹۰ و سبک Neo-Brutalist.
-            
-            ### ✨ تغییرات و امکانات نسخه جدید:
-            - 🤖 **سرآشپز هوش مصنوعی (Gemini LLM):** تحلیل موجودی یخچال و پیشنهاد ۳ غذای منتخب اختصاصی همراه با مراحل پخت و مواد کمبوددار
-            - ☁️ **اتصال ابری کلادفلر (Cloudflare Tunnel):** ارتباط آنلاین و بدون قطعی با سرور بک‌اند در هر نقطه از اینترنت
-            - 👤 **سیستم ساخت حساب کاربری و ورود (Authentication):** ثبت‌نام، ورود به حساب و ذخیره‌سازی ابری/محلی
-            - 🧊 **سامانه ضد دورریز و قفسه اضطراری:** هشدار انقضای مواد، تخمین صرفه‌جویی ماهانه و پیشنهاد مصرف اقلام زودمصرف
-            - 🎨 **آیکون‌های بازطراحی‌شده و نوستالژیک:** آیکون‌های وکتور اختصاصی مواد غذایی و آواتارهای رترو
-            - ⏱️ **تایمر رترو و دفترچه آشپزی دیجیتال**
-            
-            ### 📱 فایل خروجی APK:
-            می‌توانید فایل `yakhchal-man.apk` را مستقیماً از بخش Assets همین ریلیز دانلود و روی گوشی اندروید خود نصب کنید.
+            ## 🍳 اپلیکیشن فارسی «یخچال من» (My Fridge)
+
+            فایل `yakhchal-man.apk` را از بخش Assets همین ریلیز دانلود و روی گوشی اندروید خود نصب کنید.
+            فهرست تغییرات این نسخه در بخش «What's Changed» پایین آمده است.
           files: build-output/yakhchal-man.apk
           draft: false
           prerelease: false
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

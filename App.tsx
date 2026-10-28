@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -43,7 +43,6 @@ import { RecipeDetailsModal } from './src/components/modals/RecipeDetailsModal';
 import { AuthModal } from './src/components/modals/AuthModal';
 import { UserProfileModal } from './src/components/modals/UserProfileModal';
 import { AppUpdateModal } from './src/components/modals/AppUpdateModal';
-import { AiChefModal } from './src/components/modals/AiChefModal';
 import { HomeStep } from './src/components/home/StepWizardBar';
 
 // Enable RTL layout
@@ -110,7 +109,6 @@ function MainApp() {
   const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [recommendedRecipeIndex, setRecommendedRecipeIndex] = useState(0);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isAiChefModalOpen, setIsAiChefModalOpen] = useState(false);
   const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
@@ -135,6 +133,10 @@ function MainApp() {
     },
     []
   );
+
+  // Wrapper that also keeps `ingredients` in sync (separate setter reference
+  // needed because React batches updates and we want both to land together)
+  const setInventory = (inv: Ingredient[]) => setIngredients(inv);
 
   // ── Hydrate from storage ───────────────────────────────────────────────────
   /**
@@ -184,10 +186,6 @@ function MainApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
-
-  // Wrapper that also keeps `ingredients` in sync (separate setter reference
-  // needed because React batches updates and we want both to land together)
-  const setInventory = (inv: Ingredient[]) => setIngredients(inv);
 
   // Startup: restore session then load that user's fridge & check updates silently
   useEffect(() => {
@@ -462,7 +460,10 @@ function MainApp() {
   );
 
   // ── Recipe suggestions ────────────────────────────────────────────────────
-  const rankedRecipes = rankRecipesByScore(RECIPES, ingredients);
+  const rankedRecipes = useMemo(
+    () => rankRecipesByScore(RECIPES, ingredients),
+    [ingredients]
+  );
   const currentRecommendation =
     rankedRecipes[recommendedRecipeIndex % rankedRecipes.length] ||
     checkRecipeAvailability(RECIPES[0], ingredients);
@@ -595,13 +596,6 @@ function MainApp() {
         visible={selectedRecipeModal !== null}
         inventory={ingredients}
         onClose={() => setSelectedRecipeModal(null)}
-      />
-
-      {/* AI Chef LLM Recipe Modal */}
-      <AiChefModal
-        visible={isAiChefModalOpen}
-        inventory={ingredients}
-        onClose={() => setIsAiChefModalOpen(false)}
       />
 
       {/* In-App Update Modal with Retro UI */}

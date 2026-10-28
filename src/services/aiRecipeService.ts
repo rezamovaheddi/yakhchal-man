@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import { Ingredient, UserAccount } from '../types';
 
 export interface AiRecipeSuggestion {
@@ -18,44 +17,32 @@ export interface AiRecipeResponse {
   success: boolean;
   suggestions?: AiRecipeSuggestion[];
   error?: string;
-  source?: 'backend' | 'cloudflare_tunnel' | 'direct_gemini';
+  source?: 'backend' | 'direct_gemini';
   connectedUrl?: string;
   databaseSynced?: boolean;
 }
 
 export const PRODUCTION_BACKEND_URL = 'https://yakhchal-man.onrender.com/api/ai/suggest';
-export const CLOUDFLARE_TUNNEL_ID = '9d434a06-3486-4303-98dd-479105d6a5d8';
-export const LIVE_CLOUDFLARE_URL = 'https://upon-ideal-compound-seating.trycloudflare.com/api/ai/suggest';
 
 /**
- * Returns list of backend endpoints to query based on device platform.
- * Render 24/7 cloud server is prioritized so requests are always handled reliably.
+ * Returns list of backend endpoints to query.
+ * The Render 24/7 cloud server is the only official endpoint; expired
+ * Cloudflare quick-tunnels and local dev addresses are no longer hardcoded.
+ * EXPO_PUBLIC_BACKEND_URL (from .env) can override for local development.
  */
 export const getBackendUrls = (): string[] => {
-  const isWeb = typeof Platform !== 'undefined' && Platform.OS === 'web';
   const customUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
-
-  if (isWeb) {
-    return [
-      PRODUCTION_BACKEND_URL,
-      'http://localhost:3001/api/ai/suggest',
-      customUrl,
-      LIVE_CLOUDFLARE_URL,
-      `https://${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com/api/ai/suggest`,
-      'http://10.0.2.2:3001/api/ai/suggest',
-    ].filter(Boolean) as string[];
-  }
-
-  // Native Mobile APK (Android / iOS):
-  return [
-    PRODUCTION_BACKEND_URL,
-    customUrl,
-    LIVE_CLOUDFLARE_URL,
-    `https://${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com/api/ai/suggest`,
-    'http://10.0.2.2:3001/api/ai/suggest',
-    'http://localhost:3001/api/ai/suggest',
-  ].filter(Boolean) as string[];
+  return [...new Set([PRODUCTION_BACKEND_URL, customUrl].filter(Boolean) as string[])];
 };
+
+/**
+ * Render free tier needs up to ~60s for a cold start, and Gemini generation
+ * itself takes several seconds — 5s timeouts aborted valid requests, so the
+ * production endpoint gets a longer window and one retry (which also spins
+ * the instance up).
+ */
+const AI_REQUEST_TIMEOUT_MS = 20000;
+const SYNC_REQUEST_TIMEOUT_MS = 8000;
 
 /**
  * Synchronize user's fridge and items into backend database
@@ -80,7 +67,7 @@ export async function syncFridgeToDatabase(
     try {
       const syncUrl = baseEndpoint.replace(/\/api\/ai\/suggest$/, '/api/user/fridge');
       const controller = new AbortController();
-      timer = setTimeout(() => controller.abort(), 4000);
+      timer = setTimeout(() => controller.abort(), SYNC_REQUEST_TIMEOUT_MS);
 
       const res = await fetch(syncUrl, {
         method: 'POST',
@@ -139,38 +126,40 @@ export async function getAiRecipeSuggestions(
     fridgeName,
   };
 
-  // 1. Try dedicated Backend Server / Cloudflare Tunnel
+  // 1. Try dedicated Backend Server (Render cloud, with retry for cold starts)
   const backendUrls = getBackendUrls();
   for (const url of backendUrls) {
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    try {
-      const controller = new AbortController();
-      timeoutId = setTimeout(() => controller.abort(), 5000);
+    const attempts = url === PRODUCTION_BACKEND_URL ? 2 : 1;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && Array.isArray(data.suggestions)) {
-          const isCloudflare = url.includes('cloudflare.com') || url.includes('argotunnel.com');
-          return {
-            success: true,
-            suggestions: data.suggestions,
-            source: isCloudflare ? 'cloudflare_tunnel' : 'backend',
-            connectedUrl: url,
-          };
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.suggestions)) {
+            return {
+              success: true,
+              suggestions: data.suggestions,
+              source: 'backend' as const,
+              connectedUrl: url,
+            };
+          }
         }
-      }
-    } catch {
-      // Backend not running on this URL or unreachable, try next or fallback
-    } finally {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+      } catch {
+        // Backend not running on this URL or unreachable, retry or fallback
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
       }
     }
   }
@@ -232,7 +221,6 @@ ${preferences ? `ترجیحات کاربر: ${preferences}` : ''}
     });
 
     if (!response.ok) {
-      const errText = await response.text();
       return {
         success: false,
         error: `خطا در برقراری ارتباط با مدل هوش مصنوعی (${response.status})`,

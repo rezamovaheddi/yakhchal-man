@@ -30,17 +30,19 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({
   const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
-    if (isRunning && timerSeconds > 0) {
-      interval = setInterval(() => {
-        setTimerSeconds((prev) => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
-    } else if (timerSeconds === 0) {
-      setIsRunning(false);
+    if (!isRunning) {
+      if (timerSeconds === 0) {
+        // Countdown finished — flip the run state asynchronously so the effect
+        // body itself never calls setState synchronously.
+        const stop = setTimeout(() => setIsRunning(false), 0);
+        return () => clearTimeout(stop);
+      }
+      return;
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    const interval = setInterval(() => {
+      setTimerSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
   }, [isRunning, timerSeconds]);
 
   const formatTimer = (totalSec: number) => {

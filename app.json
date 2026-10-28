@@ -2,11 +2,13 @@
   "expo": {
     "name": "یخچال من",
     "slug": "yakhchal-man",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
       "backgroundColor": "#D9A78F"
     },
     "ios": {
@@ -15,7 +17,7 @@
     },
     "android": {
       "package": "com.rezamovaheddi.yakhchalman",
-      "versionCode": 5,
+      "versionCode": 6,
       "permissions": [
         "REQUEST_INSTALL_PACKAGES"
       ],

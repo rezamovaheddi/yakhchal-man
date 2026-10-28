@@ -59,7 +59,7 @@ export const AiChefScreen: React.FC<AiChefScreenProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [suggestions, setSuggestions] = useState<AiRecipeSuggestion[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<'backend' | 'cloudflare_tunnel' | 'direct_gemini' | null>(null);
+  const [source, setSource] = useState<'backend' | 'direct_gemini' | null>(null);
   const [selectedPreference, setSelectedPreference] = useState<string>('');
   const [loadingMsgIndex, setLoadingMsgIndex] = useState<number>(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -67,28 +67,6 @@ export const AiChefScreen: React.FC<AiChefScreenProps> = ({
   const [isSyncingDb, setIsSyncingDb] = useState<boolean>(false);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Rotating loading messages
-  useEffect(() => {
-    if (loading) {
-      setLoadingMsgIndex(0);
-      timerRef.current = setInterval(() => {
-        setLoadingMsgIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-      }, 2000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [loading]);
-
-  // Sync to database when user logs in or inventory changes
-  useEffect(() => {
-    if (currentUser && inventory.length > 0) {
-      handleSyncDatabase();
-    }
-  }, [currentUser?.id, inventory.length]);
 
   const handleSyncDatabase = async () => {
     if (!currentUser) return;
@@ -98,14 +76,33 @@ export const AiChefScreen: React.FC<AiChefScreenProps> = ({
       if (res.success) {
         setDbSyncMessage(`اقلام یخچال در دیتابیس با موفقیت ثبت شد ✓ (${toPersianDigits(inventory.length)} قلم)`);
       } else {
-        setDbSyncMessage(`ذخیره در دیتابیس محلی دستگاه ✓ (${toPersianDigits(inventory.length)} قلم)`);
+        setDbSyncMessage(`همگام‌سازی ابری ناموفق بود — اقلام فقط روی همین دستگاه ذخیره شد ⚠️`);
       }
     } catch {
-      setDbSyncMessage(`ذخیره در حافظه محلی ✓`);
+      setDbSyncMessage(`همگام‌سازی ابری ناموفق بود — اقلام فقط روی همین دستگاه ذخیره شد ⚠️`);
     } finally {
       setIsSyncingDb(false);
     }
   };
+
+  // Rotating loading messages
+  useEffect(() => {
+    if (!loading) return;
+    timerRef.current = setInterval(() => {
+      setLoadingMsgIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+    }, 2000);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [loading]);
+
+  // Sync to database when user logs in or inventory changes. Debounced so a
+  // burst of edits (adding several items in a row) coalesces into one request.
+  useEffect(() => {
+    if (!currentUser || inventory.length === 0) return;
+    const syncDelay = setTimeout(() => handleSyncDatabase(), 1500);
+    return () => clearTimeout(syncDelay);
+  }, [currentUser?.id, inventory.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchSuggestions = async (prefOverride?: string) => {
     if (!currentUser) {
@@ -119,14 +116,15 @@ export const AiChefScreen: React.FC<AiChefScreenProps> = ({
     }
 
     setLoading(true);
+    setLoadingMsgIndex(0);
     setError(null);
     setExpandedId(null);
 
     const preferenceToUse = prefOverride !== undefined ? prefOverride : selectedPreference;
 
     try {
-      // Also ensure latest fridge state is synced in DB
-      handleSyncDatabase();
+      // Note: the backend also syncs the fridge to its database on every
+      // /api/ai/suggest request, so no extra sync call is needed here.
 
       const response: AiRecipeResponse = await getAiRecipeSuggestions(
         inventory,
@@ -349,21 +347,13 @@ export const AiChefScreen: React.FC<AiChefScreenProps> = ({
                 <View style={styles.sourceBadgeRow}>
                   <View style={styles.sourceBadge}>
                     <Ionicons
-                      name={
-                        source === 'cloudflare_tunnel'
-                          ? 'cloud-done-outline'
-                          : source === 'backend'
-                          ? 'server-outline'
-                          : 'sparkles-outline'
-                      }
+                      name={source === 'backend' ? 'server-outline' : 'sparkles-outline'}
                       size={14}
-                      color={source === 'cloudflare_tunnel' ? '#0288D1' : COLORS.grayDark}
+                      color={COLORS.grayDark}
                     />
                     <Text style={styles.sourceText}>
-                      {source === 'cloudflare_tunnel'
-                        ? 'اتصال ابری کلادفلر تانل (Cloudflare Tunnel ☁️)'
-                        : source === 'backend'
-                        ? 'پاسخ مستقیم از بک‌اند لوکال (Node Express ⚡)'
+                      {source === 'backend'
+                        ? 'پاسخ از سرور ابری بک‌اند (Node Express ⚡)'
                         : 'پاسخ مستقیم از مدل Gemini 3.5 ✨'}
                     </Text>
                   </View>

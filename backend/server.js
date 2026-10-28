@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -14,7 +15,6 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
-const CLOUDFLARE_TUNNEL_ID = process.env.CLOUDFLARE_TUNNEL_ID || '9d434a06-3486-4303-98dd-479105d6a5d8';
 
 // Database storage setup
 const DATA_DIR = path.join(__dirname, 'data');
@@ -44,19 +44,36 @@ function saveDatabase(data) {
   }
 }
 
+app.disable('x-powered-by');
 app.use(cors());
 app.use(express.json());
 
-// Health Check Endpoint
+// Basic abuse protection: the AI endpoint costs real Gemini quota, so it gets
+// a strict per-IP budget; everything else gets a generous global cap.
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'تعداد درخواست‌های شما بیش از حد مجاز است. لطفاً کمی بعد دوباره تلاش کنید.',
+  },
+});
+
+app.use(globalLimiter);
+
+// Health Check Endpoint (intentionally minimal — no user counts or internals)
 app.get('/health', (req, res) => {
-  const db = loadDatabase();
-  const registeredUsersCount = Object.keys(db.users || {}).length;
   res.json({
     status: 'ok',
     service: 'yakhchal-man-ai-backend',
-    model: GEMINI_MODEL,
-    cloudflareTunnelId: CLOUDFLARE_TUNNEL_ID,
-    databaseUsersCount: registeredUsersCount,
     time: new Date().toISOString(),
   });
 });
@@ -99,7 +116,6 @@ app.post('/api/user/fridge', (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'خطا در ثبت اطلاعات در دیتابیس.',
-      details: err?.message,
     });
   }
 });
@@ -131,7 +147,7 @@ app.get('/api/user/fridge/:userId', (req, res) => {
 });
 
 // AI Recipe Recommendation Endpoint
-app.post('/api/ai/suggest', async (req, res) => {
+app.post('/api/ai/suggest', aiLimiter, async (req, res) => {
   try {
     const { ingredients = [], preferences = '', userId, username, fridgeName } = req.body;
 
@@ -222,10 +238,9 @@ ${preferences ? `ترجیحات کاربر: ${preferences}` : ''}
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[Gemini API Error]:', response.status, errorText);
-      return res.status(response.status).json({
+      return res.status(502).json({
         success: false,
         error: `خطا در دریافت پاسخ از هوش مصنوعی (${response.status})`,
-        details: errorText,
       });
     }
 
@@ -283,7 +298,6 @@ ${preferences ? `ترجیحات کاربر: ${preferences}` : ''}
     return res.status(500).json({
       success: false,
       error: 'خطای پیش‌بینی‌نشده در سرور بک‌اند.',
-      details: err?.message,
     });
   }
 });
@@ -292,5 +306,4 @@ app.listen(PORT, () => {
   console.log(`🚀 سرور هوش مصنوعی یخچال من روی پورت ${PORT} با مدل ${GEMINI_MODEL} فعال شد.`);
   console.log(`📡 آدرس سلامت: http://localhost:${PORT}/health`);
   console.log(`🍲 اندپوینت پیشنهاد غذا: POST http://localhost:${PORT}/api/ai/suggest`);
-  console.log(`🌐 Cloudflare Tunnel ID: ${CLOUDFLARE_TUNNEL_ID}`);
 });

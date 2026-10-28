@@ -1,6 +1,6 @@
 {
   "name": "yakhchal-man",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/vazirmatn": "^0.4.1",
@@ -23,6 +23,8 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "~19.2.2",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~57.0.2",
     "jest": "^30.5.2",
     "ts-jest": "^29.4.14",
     "typescript": "~6.0.3"
@@ -35,7 +37,8 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "server": "node backend/server.js",
-    "export:web": "expo export -p web"
+    "export:web": "expo export -p web",
+    "lint": "expo lint"
   },
   "private": true
 }
