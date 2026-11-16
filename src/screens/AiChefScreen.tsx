@@ -5,11 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import { Ingredient, UserAccount } from '../types';
 import { RetroWindow } from '../components/common/RetroWindow';
 import { RetroButton } from '../components/common/RetroButton';
+import { RetroTerminalLoading } from '../components/common/RetroTerminalLoading';
 import { FoodIconRenderer } from '../components/icons/FoodIcons';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import {
@@ -292,26 +292,11 @@ export const AiChefScreen: React.FC<AiChefScreenProps> = ({
 
             {/* LOADING STATE */}
             {loading && (
-              <View style={styles.loadingBox}>
-                <View style={styles.retroTerminalHeader}>
-                  <Text style={styles.terminalTitle}>C:\AI_CHEF\GEMINI_LLM.EXE</Text>
-                  <ActivityIndicator size="small" color={COLORS.orange} />
-                </View>
-                <View style={styles.terminalBody}>
-                  <Text style={styles.terminalCursor}>&gt; {LOADING_MESSAGES[loadingMsgIndex]}</Text>
-                  <View style={styles.retroProgressTrack}>
-                    <View
-                      style={[
-                        styles.retroProgressBar,
-                        { width: `${((loadingMsgIndex + 1) / LOADING_MESSAGES.length) * 100}%` },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.terminalHint}>
-                    داده‌های یخچال کاربر در دیتابیس ثبت و توسط مدل زبان Gemini پردازش می‌شود...
-                  </Text>
-                </View>
-              </View>
+              <RetroTerminalLoading
+                currentMessage={LOADING_MESSAGES[loadingMsgIndex]}
+                stepIndex={loadingMsgIndex}
+                totalSteps={LOADING_MESSAGES.length}
+              />
             )}
 
             {/* ERROR STATE */}
