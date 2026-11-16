@@ -1,6 +1,6 @@
 {
   "name": "yakhchal-man",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/vazirmatn": "^0.4.1",
