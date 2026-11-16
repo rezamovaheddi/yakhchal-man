@@ -3,9 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { appStorage } from '../utils/appStorage';
 import { FridgeData, Ingredient } from '../types';
 
-jest.mock('@react-native-async-storage/async-storage', () =>
-  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
-);
+jest.mock('@react-native-async-storage/async-storage', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('@react-native-async-storage/async-storage/jest/async-storage-mock');
+});
 
 const DEFAULT_CATALOG: Ingredient[] = [
   { id: 'cat-1', name: 'تخم‌مرغ', quantity: 4, unit: 'عدد', category: 'پروتئین', iconName: 'egg' },

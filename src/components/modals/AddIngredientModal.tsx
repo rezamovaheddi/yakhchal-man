@@ -4,7 +4,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   Pressable,
 } from 'react-native';
@@ -21,7 +20,7 @@ import {
 } from '../icons/RetroIcons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getFutureDateString, DEFAULT_INGREDIENT_PRICES } from '../../utils/antiWasteEngine';
-import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
+import { COLORS, RETRO_SHADOW } from '../../constants/theme';
 
 interface AddIngredientModalProps {
   visible: boolean;

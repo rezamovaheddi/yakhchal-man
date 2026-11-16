@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Rect, Circle, G, Ellipse } from 'react-native-svg';
+import Svg, { Path, Rect, Circle, Ellipse } from 'react-native-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/theme';
 

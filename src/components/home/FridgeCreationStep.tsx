@@ -14,10 +14,10 @@ interface FridgeCreationStepProps {
   isAlreadyCreated?: boolean;
 }
 
-const PRESET_NAMES: Array<{
+const PRESET_NAMES: {
   label: string;
   icon: (color: string) => React.ReactNode;
-}> = [
+}[] = [
   {
     label: 'یخچال خونه ما',
     icon: (color) => <Ionicons name="home-outline" size={13} color={color} />,
@@ -36,11 +36,11 @@ const PRESET_NAMES: Array<{
   },
 ];
 
-const FRIDGE_MODELS: Array<{
+const FRIDGE_MODELS: {
   id: string;
   label: string;
   icon: (color: string) => React.ReactNode;
-}> = [
+}[] = [
   {
     id: 'classic',
     label: 'رترو کلاسیک',

@@ -18,12 +18,11 @@ import {
   RetroAddIcon,
   RetroBulbIcon,
   RetroSpeedometerIcon,
-  RetroCloseIcon,
 } from '../icons/RetroIcons';
 import { Ionicons } from '@expo/vector-icons';
 import { formatQuantity, toPersianDigits } from '../../utils/persian';
 import { normalizePersianName, suggestSubstitutes } from '../../utils/recipeEngine';
-import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
+import { COLORS, BORDER } from '../../constants/theme';
 
 interface RecipeDetailsModalProps {
   recipe: Recipe | null;

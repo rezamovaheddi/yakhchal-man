@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Circle, Rect, Ellipse, G } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, Ellipse } from 'react-native-svg';
 import { COLORS } from '../../constants/theme';
 
 interface AvatarProps {

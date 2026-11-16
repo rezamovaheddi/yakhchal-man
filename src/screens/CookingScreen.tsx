@@ -31,11 +31,11 @@ interface CookingScreenProps {
   onOpenAiChef?: () => void;
 }
 
-const MEAL_TABS: Array<{
+const MEAL_TABS: {
   id: MealFilter;
   label: string;
   icon: (color: string) => React.ReactNode;
-}> = [
+}[] = [
   {
     id: 'همه',
     label: 'همه',

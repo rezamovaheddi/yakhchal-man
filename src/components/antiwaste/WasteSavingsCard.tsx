@@ -7,7 +7,6 @@ import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 import {
   RetroCashCheckIcon,
   RetroTrashIcon,
-  RetroSavingsIcon,
   RetroSparkleIcon,
   RetroBulbIcon,
 } from '../icons/RetroIcons';

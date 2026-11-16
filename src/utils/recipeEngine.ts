@@ -362,8 +362,8 @@ const SUBSTITUTES: Record<string, string[]> = {
  */
 export function suggestSubstitutes(
   missingIngredients: string[]
-): Array<{ missing: string; substitutes: string[] }> {
-  const results: Array<{ missing: string; substitutes: string[] }> = [];
+): { missing: string; substitutes: string[] }[] {
+  const results: { missing: string; substitutes: string[] }[] = [];
   for (const name of missingIngredients) {
     const normalised = normalizePersianName(name);
     let subs = SUBSTITUTES[normalised] ?? SUBSTITUTES[name];

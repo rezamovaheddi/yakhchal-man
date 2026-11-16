@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { COLORS, BORDER } from '../../constants/theme';
+import { COLORS } from '../../constants/theme';
 
 interface RetroBadgeProps {
   label: string;

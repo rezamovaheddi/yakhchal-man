@@ -6,19 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Pressable,
 } from 'react-native';
 import { Ingredient, UserAccount } from '../types';
 import { RetroWindow } from '../components/common/RetroWindow';
 import { RetroButton } from '../components/common/RetroButton';
-import { RetroBadge } from '../components/common/RetroBadge';
 import { FoodIconRenderer } from '../components/icons/FoodIcons';
-import {
-  RetroBulbIcon,
-  RetroSparkleIcon,
-  RetroRefreshIcon,
-  RetroSnowflakeIcon,
-} from '../components/icons/RetroIcons';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   getAiRecipeSuggestions,

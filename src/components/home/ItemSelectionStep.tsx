@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ingredient, IngredientCategory } from '../../types';
 import { RetroWindow } from '../common/RetroWindow';
 import { RetroButton } from '../common/RetroButton';
@@ -7,7 +7,6 @@ import { FoodIconRenderer } from '../icons/FoodIcons';
 import {
   RetroAddIcon,
   RetroRemoveIcon,
-  RetroCheckCircleIcon,
 } from '../icons/RetroIcons';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { toPersianDigits, formatQuantity } from '../../utils/persian';

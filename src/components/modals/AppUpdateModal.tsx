@@ -17,11 +17,9 @@ import { CURRENT_APP_VERSION, downloadAndInstallApk } from '../../utils/updateSe
 import { toPersianDigits } from '../../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 import {
-  RetroCheckCircleIcon,
   RetroRefreshIcon,
   RetroDownloadIcon,
   RetroCloseIcon,
-  RetroAlertIcon,
 } from '../icons/RetroIcons';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -86,7 +84,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
           setInstallStatusText('');
           onClose();
         }, 1000);
-      } catch (e: any) {
+      } catch {
         setInstallError('امکان باز کردن نشانی به‌روزرسانی وجود ندارد.');
         setDownloadProgress(null);
       }

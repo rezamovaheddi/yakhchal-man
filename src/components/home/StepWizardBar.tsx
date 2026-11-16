@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
-import { toPersianDigits } from '../../utils/persian';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 
 export type HomeStep = 'build_fridge' | 'select_items' | 'suggestion_and_items';

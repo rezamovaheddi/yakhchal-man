@@ -3,9 +3,7 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Recipe } from '../types';
 import { RetroWindow } from '../components/common/RetroWindow';
 import { RetroButton } from '../components/common/RetroButton';
-import { RetroBadge } from '../components/common/RetroBadge';
 import {
-  RetroCookingIcon,
   RetroBellIcon,
   RetroPlayIcon,
   RetroPauseIcon,
@@ -14,7 +12,7 @@ import {
 } from '../components/icons/RetroIcons';
 import { FoodIconRenderer } from '../components/icons/FoodIcons';
 import { toPersianDigits } from '../utils/persian';
-import { COLORS, BORDER, RETRO_SHADOW } from '../constants/theme';
+import { COLORS, BORDER } from '../constants/theme';
 
 interface RecipesScreenProps {
   recipes: Recipe[];

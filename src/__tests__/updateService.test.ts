@@ -1,4 +1,4 @@
-import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import { describe, test, expect, jest } from '@jest/globals';
 import { compareVersions, checkForAppUpdates, CURRENT_APP_VERSION } from '../utils/updateService';
 
 describe('updateService', () => {

@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { Ingredient, StorageLocation } from '../../types';
+import { Ingredient } from '../../types';
 import { RetroWindow } from '../common/RetroWindow';
-import { RetroBadge } from '../common/RetroBadge';
 import { FoodIconRenderer } from '../icons/FoodIcons';
 import { getUrgentIngredients, getExpiryBadgeText } from '../../utils/antiWasteEngine';
 import { formatQuantity, toPersianDigits } from '../../utils/persian';
