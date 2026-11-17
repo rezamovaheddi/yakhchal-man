@@ -16,6 +16,8 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+// Admin panel token — panel + /api/admin/* stay DISABLED (503) until set.
+const ADMIN_TOKEN = (process.env.ADMIN_TOKEN || '').trim();
 
 // The service runs behind Render's proxy / Cloudflare, so the client IP is in
 // X-Forwarded-For. Without this, express-rate-limit buckets EVERY user under
@@ -25,30 +27,43 @@ app.set('trust proxy', 1);
 // Rate limits are env-configurable; DISABLE_RATE_LIMIT=1 exists purely for
 // local load testing (backend/loadtest.mjs) — never enable it in production.
 const RATE_LIMITS_DISABLED = process.env.DISABLE_RATE_LIMIT === '1';
-const GLOBAL_MAX = parseInt(process.env.RATE_LIMIT_GLOBAL || '120', 10);
+const GLOBAL_MAX = parseInt(process.env.RATE_LIMIT_GLOBAL || '10', 10);
 const AI_MAX = parseInt(process.env.RATE_LIMIT_AI || '10', 10);
+const ADMIN_AUTH_MAX = parseInt(process.env.ADMIN_AUTH_MAX || '10', 10);
 
-function makeLimiter(max, message) {
+function makeLimiter({ max, windowMs = 60 * 1000, message, skip }) {
   if (RATE_LIMITS_DISABLED) {
     return (req, res, next) => next();
   }
   return rateLimit({
-    windowMs: 60 * 1000,
+    windowMs,
     max,
     standardHeaders: true,
     legacyHeaders: false,
+    skip,
     message: { success: false, error: message },
   });
 }
 
-const globalLimiter = makeLimiter(
-  GLOBAL_MAX,
-  'تعداد درخواست‌های شما بیش از حد مجاز است. لطفاً کمی بعد دوباره تلاش کنید.'
-);
-const aiLimiter = makeLimiter(
-  AI_MAX,
-  'تعداد درخواست‌های شما بیش از حد مجاز است. لطفاً کمی بعد دوباره تلاش کنید.'
-);
+// Hard per-IP budget for the app API. /health (monitoring) and /admin
+// (has its own limiter) are exempt — see the skip list.
+const globalLimiter = makeLimiter({
+  max: GLOBAL_MAX,
+  message: 'تعداد درخواست‌های شما بیش از حد مجاز است. لطفاً کمی بعد دوباره تلاش کنید.',
+  skip: (req) => req.path === '/health' || req.path.includes('/admin'),
+});
+const aiLimiter = makeLimiter({
+  max: AI_MAX,
+  message: 'تعداد درخواست‌های شما بیش از حد مجاز است. لطفاً کمی بعد دوباره تلاش کنید.',
+});
+// Brute-force guard on the admin API: wrong tokens burn the budget, valid
+// tokens skip it entirely so the dashboard is never throttled.
+const adminLimiter = makeLimiter({
+  max: ADMIN_AUTH_MAX,
+  windowMs: 10 * 60 * 1000,
+  message: 'تلاش‌های ناموفق ورود به پنل مدیریت بیش از حد مجاز است. دسترسی شما موقتاً مسدود شد.',
+  skip: (req) => isValidAdminToken(req),
+});
 
 // ---------------------------------------------------------------------------
 // Database layer — in-memory cache with debounced atomic persistence
@@ -59,7 +74,7 @@ const aiLimiter = makeLimiter(
 // Persistence is atomic (tmp file + rename) so a crash mid-write can never
 // corrupt the previous snapshot.
 
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'database.json');
 
 if (!fs.existsSync(DATA_DIR)) {
@@ -111,6 +126,24 @@ function scheduleSave() {
 
 function hasOwn(map, key) {
   return typeof key === 'string' && Object.prototype.hasOwnProperty.call(map, key);
+}
+
+// ---------------------------------------------------------------------------
+// Activity log (admin panel "user flow" feed) — bounded ring buffer
+// ---------------------------------------------------------------------------
+const LOG_CAP = 500;
+
+function logEvent(type, userId, detail) {
+  db.logs.push({
+    ts: new Date().toISOString(),
+    type,
+    userId: userId || null,
+    detail: detail || null,
+  });
+  if (db.logs.length > LOG_CAP) {
+    db.logs.splice(0, db.logs.length - LOG_CAP);
+  }
+  scheduleSave();
 }
 
 // ---------------------------------------------------------------------------
@@ -206,6 +239,7 @@ app.post('/api/auth/register', (req, res) => {
 
   db.credentials[userId] = sha256Hex(`${userId}:${syncSecret.toLowerCase()}`);
   scheduleSave();
+  logEvent('register', userId, sanitizeText(username, 40) || null);
 
   console.log(`🔑 حساب سرآشپز برای [${sanitizeText(username, 40) || userId}] ثبت شد.`);
   return res.json({ success: true, message: 'حساب همگام‌سازی با موفقیت ثبت شد.' });
@@ -232,6 +266,7 @@ app.post('/api/user/fridge', (req, res) => {
       updatedAt: new Date().toISOString(),
     };
     scheduleSave();
+    logEvent('fridge_sync', authUserId, `${safeInventory.length} قلم`);
 
     return res.json({
       success: true,
@@ -258,6 +293,146 @@ app.get('/api/user/fridge/:userId', (req, res) => {
     return res.status(404).json({ success: false, error: 'اطلاعات کاربری در پایگاه داده یافت نشد.' });
   }
   return res.json({ success: true, data: db.users[authUserId] });
+});
+
+// ---------------------------------------------------------------------------
+// Admin panel — token-gated dashboard over the live database
+// ---------------------------------------------------------------------------
+// The page is a static file (admin-panel.html); all data flows through
+// /api/admin/* which requires `Authorization: Bearer <ADMIN_TOKEN>`.
+// The comparison is double-hashed + timingSafeEqual so request timing leaks
+// nothing about the stored token.
+
+function isValidAdminToken(req) {
+  if (!ADMIN_TOKEN) return false;
+  const match = /^Bearer (.+)$/.exec(req.headers.authorization || '');
+  if (!match) return false;
+  const presented = Buffer.from(sha256Hex(match[1]), 'hex');
+  const stored = Buffer.from(sha256Hex(ADMIN_TOKEN), 'hex');
+  return presented.length === stored.length && crypto.timingSafeEqual(presented, stored);
+}
+
+function requireAdmin(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    return res.status(503).json({
+      success: false,
+      error: 'پنل مدیریت فعال نیست — متغیر محیطی ADMIN_TOKEN تنظیم نشده است.',
+    });
+  }
+  if (!isValidAdminToken(req)) {
+    logEvent('admin_auth_fail', null, req.ip || null);
+    return res.status(401).json({ success: false, error: 'احراز هویت مدیر نامعتبر است.' });
+  }
+  next();
+}
+
+const adminApi = express.Router();
+adminApi.use(requireAdmin);
+// Never let proxies or the browser cache admin data.
+adminApi.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  res.set('X-Content-Type-Options', 'nosniff');
+  next();
+});
+
+function publicUserView(user) {
+  return {
+    userId: user.userId,
+    username: user.username,
+    fridgeName: user.fridgeName,
+    itemsCount: user.itemsCount,
+    updatedAt: user.updatedAt || null,
+    lastAiRequest: user.lastAiRequest || null,
+  };
+}
+
+adminApi.get('/stats', (req, res) => {
+  const users = Object.values(db.users);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return res.json({
+    success: true,
+    stats: {
+      totalUsers: users.length,
+      registeredCredentials: Object.keys(db.credentials).length,
+      totalInventoryItems: users.reduce((sum, u) => sum + (Number(u.itemsCount) || 0), 0),
+      eventsToday: db.logs.filter((e) => e.ts && new Date(e.ts) >= todayStart).length,
+      uptimeSec: Math.round(process.uptime()),
+      memoryMB: Math.round(process.memoryUsage().rss / 1e6),
+      time: new Date().toISOString(),
+    },
+  });
+});
+
+adminApi.get('/users', (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase();
+  const users = Object.values(db.users)
+    .filter(
+      (u) =>
+        !q ||
+        [u.username, u.fridgeName, u.userId].some((v) =>
+          String(v || '').toLowerCase().includes(q)
+        )
+    )
+    .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
+    .map(publicUserView);
+  return res.json({ success: true, count: users.length, users });
+});
+
+adminApi.get('/users/:userId', (req, res) => {
+  const userId = req.params.userId;
+  if (!hasOwn(db.users, userId)) {
+    return res.status(404).json({ success: false, error: 'کاربر یافت نشد.' });
+  }
+  const userEvents = db.logs
+    .filter((e) => e.userId === userId)
+    .slice(-50)
+    .reverse();
+  return res.json({
+    success: true,
+    user: { ...publicUserView(db.users[userId]), inventory: db.users[userId].inventory || [], antiWasteStats: db.users[userId].antiWasteStats || null },
+    events: userEvents,
+  });
+});
+
+adminApi.delete('/users/:userId', (req, res) => {
+  const userId = req.params.userId;
+  if (!hasOwn(db.users, userId)) {
+    return res.status(404).json({ success: false, error: 'کاربر یافت نشد.' });
+  }
+  delete db.users[userId];
+  delete db.credentials[userId];
+  scheduleSave();
+  logEvent('admin_delete', userId, 'حذف توسط مدیر');
+  console.log(`🗑️ کاربر [${userId}] توسط مدیر حذف شد.`);
+  return res.json({ success: true, message: 'کاربر و اعتبار همگام‌سازی او حذف شد.' });
+});
+
+adminApi.get('/events', (req, res) => {
+  const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50));
+  return res.json({ success: true, events: db.logs.slice(-limit).reverse() });
+});
+
+app.use('/api/admin', adminLimiter, adminApi);
+
+// Serve the panel. Static file, no server-side interpolation of user data.
+const ADMIN_PAGE_FILE = path.join(__dirname, 'admin-panel.html');
+app.get('/admin', (req, res) => {
+  res.set('X-Frame-Options', 'DENY');
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Referrer-Policy', 'no-referrer');
+  res.set('Cache-Control', 'no-store');
+  if (!ADMIN_TOKEN) {
+    return res
+      .status(503)
+      .type('html')
+      .send('<!doctype html><meta charset="utf-8"><body style="font-family:sans-serif;background:#14151a;color:#eee;display:grid;place-items:center;height:100vh"><p>پنل مدیریت فعال نیست — متغیر محیطی ADMIN_TOKEN روی سرور تنظیم نشده است.</p></body>');
+  }
+  try {
+    res.type('html').send(fs.readFileSync(ADMIN_PAGE_FILE, 'utf8'));
+  } catch (err) {
+    res.status(500).send('admin-panel.html not found');
+  }
 });
 
 // AI Recipe Recommendation Endpoint
@@ -290,6 +465,7 @@ app.post('/api/ai/suggest', aiLimiter, async (req, res) => {
           updatedAt: new Date().toISOString(),
         };
         scheduleSave();
+        logEvent('ai_request', authUserId, `${safeIngredients.length} قلم`);
       } catch (e) {
         console.error('Auto sync to db error:', e.message);
       }

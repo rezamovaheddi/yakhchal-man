@@ -32,8 +32,14 @@ jobs:
       - name: 📦 Install Dependencies
         run: npm ci
 
+      - name: 📦 Install Backend Dependencies
+        run: npm ci --prefix backend
+
       - name: 🧪 Run Unit Tests
         run: npm test
+
+      - name: 🛡️ Run Backend Security Tests
+        run: npm run test:backend
 
       - name: 🔍 Run TypeScript Check
         run: npm run typecheck

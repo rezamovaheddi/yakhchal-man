@@ -40,7 +40,8 @@
     "typecheck": "tsc --noEmit",
     "server": "node backend/server.js",
     "export:web": "expo export -p web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:backend": "npm --prefix backend test"
   },
   "private": true
 }

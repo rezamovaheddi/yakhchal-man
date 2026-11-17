@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>پنل مدیریت — یخچال من</title>
+<style>
+  :root {
+    --bg: #14151a; --panel: #1e2029; --panel2: #262933; --line: #33384a;
+    --text: #eceef4; --muted: #9aa1b5; --accent: #ffb347; --accent2: #4fc3f7;
+    --green: #66bb6a; --red: #ef5350; --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: Vazirmatn, "Segoe UI", Tahoma, sans-serif; font-size: 14px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 20px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px;
+  }
+  /* ── login ── */
+  #loginView { max-width: 420px; margin: 12vh auto 0; }
+  #loginView h1 { text-align: center; }
+  #loginView input {
+    width: 100%; padding: 12px; margin: 14px 0 10px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--panel2); color: var(--text);
+    font-size: 14px; direction: ltr; text-align: left;
+  }
+  button {
+    padding: 10px 18px; border-radius: 8px; border: 0; cursor: pointer;
+    background: var(--accent); color: #14151a; font-weight: 700; font-size: 14px;
+    font-family: inherit;
+  }
+  button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--line); }
+  button.danger { background: var(--red); color: #fff; }
+  button:disabled { opacity: .5; cursor: wait; }
+  .error { color: var(--red); font-size: 13px; min-height: 18px; margin-top: 8px; }
+  /* ── stats ── */
+  .statsRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat .num { font-size: 26px; font-weight: 800; color: var(--accent); }
+  .stat .lbl { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  /* ── toolbar ── */
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .toolbar input[type=search] {
+    flex: 1; min-width: 180px; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--panel2); color: var(--text); font-family: inherit;
+  }
+  .toolbar label { color: var(--muted); font-size: 12px; display: flex; gap: 6px; align-items: center; user-select: none; }
+  /* ── tables ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  tbody tr.rowBtn { cursor: pointer; }
+  tbody tr.rowBtn:hover { background: var(--panel2); }
+  td.weak, th.weak { color: var(--muted); direction: ltr; text-align: left; font-size: 12px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; background: var(--panel2); border: 1px solid var(--line); }
+  .badge.ai_request { color: var(--accent2); }
+  .badge.register { color: var(--green); }
+  .badge.admin_delete, .badge.admin_auth_fail { color: var(--red); }
+  /* ── modal ── */
+  #modalBackdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none;
+    align-items: flex-start; justify-content: center; overflow: auto; padding: 5vh 12px;
+  }
+  #modalBackdrop.open { display: flex; }
+  #modal { width: 100%; max-width: 720px; }
+  #modal h2 { margin: 0 0 4px; font-size: 17px; }
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 10px; font-size: 13px; margin: 12px 0; }
+  .kv .k { color: var(--muted); }
+  .modalActions { display: flex; gap: 10px; margin-top: 14px; }
+  .mono { direction: ltr; text-align: left; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+  .feedItem { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; align-items: baseline; }
+  .feedItem .ts { color: var(--muted); direction: ltr; white-space: nowrap; font-size: 11px; }
+  .empty { color: var(--muted); text-align: center; padding: 24px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
+  .sectionTitle { font-size: 14px; font-weight: 700; margin: 0 0 10px; }
+  .toast {
+    position: fixed; bottom: 18px; right: 18px; background: var(--panel2);
+    border: 1px solid var(--line); color: var(--text); padding: 10px 16px;
+    border-radius: 10px; font-size: 13px; display: none;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ═══ LOGIN ═══ -->
+  <div id="loginView" class="card">
+    <h1>🧊 پنل مدیریت یخچال من</h1>
+    <div class="sub" style="text-align:center">برای ادامه، توکن مدیریت را وارد کنید</div>
+    <input id="tokenInput" type="password" placeholder="ADMIN_TOKEN" autocomplete="off" autofocus>
+    <button id="loginBtn" style="width:100%">ورود به پنل</button>
+    <div class="error" id="loginError"></div>
+  </div>
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <div id="dashView" style="display:none">
+    <h1>🧊 پنل مدیریت یخچال من</h1>
+    <div class="sub" id="dashSub"></div>
+
+    <div class="statsRow" id="statsRow"></div>
+
+    <div class="toolbar">
+      <input id="searchBox" type="search" placeholder="جستجوی نام کاربر، یخچال یا شناسه…">
+      <button id="refreshBtn" class="secondary">↻ بروزرسانی</button>
+      <label><input type="checkbox" id="autoRefresh" checked> خودکار هر ۳۰ ثانیه</label>
+      <button id="logoutBtn" class="secondary">خروج</button>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="sectionTitle">👥 کاربران</div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>کاربر</th><th>یخچال</th><th>اقلام</th><th class="weak">آخرین فعالیت</th><th class="weak">شناسه</th></tr></thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="usersEmpty" style="display:none">کاربری یافت نشد</div>
+      </div>
+
+      <div class="card">
+        <div class="sectionTitle">📡 جریان رخدادها (Flow)</div>
+        <div id="eventsFeed"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ USER DETAIL MODAL ═══ -->
+<div id="modalBackdrop">
+  <div id="modal" class="card">
+    <h2 id="modalTitle"></h2>
+    <div class="kv" id="modalKv"></div>
+    <div class="sectionTitle">🥕 موجودی یخچال</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>ماده</th><th>مقدار</th><th>واحد</th></tr></thead>
+        <tbody id="modalInventory"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="modalInvEmpty" style="display:none">یخچالی خالی است</div>
+    <div class="sectionTitle" style="margin-top:16px">📡 رخدادهای این کاربر</div>
+    <div id="modalEvents"></div>
+    <div class="modalActions">
+      <button class="danger" id="deleteUserBtn">🗑 حذف کاربر</button>
+      <button class="secondary" id="closeModalBtn">بستن</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+// ── helpers ─────────────────────────────────────────────────────────────────
+// All user-controlled values are rendered through esc()/textContent — never
+// raw innerHTML — so a hostile <script> in a username stays inert.
+function esc(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function el(id) { return document.getElementById(id); }
+function faTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  return d.toLocaleString('fa-IR');
+}
+let toastTimer = null;
+function toast(msg) {
+  el('toast').textContent = msg;
+  el('toast').style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el('toast').style.display = 'none'; }, 2600);
+}
+
+const TOKEN_KEY = 'yakhchal_admin_token';
+let currentUsers = [];
+let selectedUserId = null;
+let refreshTimer = null;
+
+function getToken() { return sessionStorage.getItem(TOKEN_KEY) || ''; }
+async function api(path, options) {
+  const res = await fetch(path, {
+    ...options,
+    headers: { Authorization: 'Bearer ' + getToken(), ...(options && options.headers) },
+  });
+  if (res.status === 401) { showLogin('اعتبار شما نامعتبر است یا منقضی شده — دوباره وارد شوید.'); throw new Error('unauthorized'); }
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, data };
+}
+
+// ── views ───────────────────────────────────────────────────────────────────
+function showLogin(message) {
+  sessionStorage.removeItem(TOKEN_KEY);
+  stopAutoRefresh();
+  el('dashView').style.display = 'none';
+  el('loginView').style.display = 'block';
+  el('modalBackdrop').classList.remove('open');
+  el('loginError').textContent = message || '';
+  el('tokenInput').value = '';
+  el('tokenInput').focus();
+}
+function showDash() {
+  el('loginView').style.display = 'none';
+  el('dashView').style.display = 'block';
+  refreshAll();
+  startAutoRefresh();
+}
+
+// ── data rendering ──────────────────────────────────────────────────────────
+async function refreshAll() {
+  try {
+    await Promise.all([loadStats(), loadUsers(), loadEvents()]);
+    el('dashSub').textContent = 'بروزرسانی: ' + new Date().toLocaleTimeString('fa-IR');
+  } catch (e) { /* 401 handled in api() */ }
+}
+
+async function loadStats() {
+  const { ok, data } = await api('/api/admin/stats');
+  if (!ok) return;
+  const s = data.stats || {};
+  const cards = [
+    [s.totalUsers, 'کاربر ثبت‌شده'],
+    [s.registeredCredentials, 'اعتبار همگام‌سازی'],
+    [s.totalInventoryItems, 'کل اقلام یخچال‌ها'],
+    [s.eventsToday, 'رخداد امروز'],
+    [s.memoryMB + 'MB', 'حافظه سرور'],
+    [Math.floor((s.uptimeSec || 0) / 60) + 'د', 'آپ‌تایم'],
+  ];
+  el('statsRow').innerHTML = cards.map(function (c) {
+    return '<div class="card stat"><div class="num">' + esc(c[0]) + '</div><div class="lbl">' + esc(c[1]) + '</div></div>';
+  }).join('');
+}
+
+async function loadUsers() {
+  const q = el('searchBox').value.trim();
+  const { ok, data } = await api('/api/admin/users' + (q ? '?q=' + encodeURIComponent(q) : ''));
+  if (!ok) return;
+  currentUsers = data.users || [];
+  const body = el('usersBody');
+  body.textContent = '';
+  el('usersEmpty').style.display = currentUsers.length ? 'none' : 'block';
+  for (const u of currentUsers) {
+    const tr = document.createElement('tr');
+    tr.className = 'rowBtn';
+    const cells = [
+      u.username || '—',
+      u.fridgeName || '—',
+      u.itemsCount == null ? '—' : u.itemsCount,
+      faTime(u.updatedAt),
+      u.userId || '—',
+    ];
+    cells.forEach(function (value, i) {
+      const td = document.createElement('td');
+      if (i === 4) { td.className = 'weak'; }
+      td.textContent = value; // textContent → XSS-safe
+      tr.appendChild(td);
+    });
+    tr.addEventListener('click', function () { openUser(u.userId); });
+    body.appendChild(tr);
+  }
+}
+
+async function loadEvents() {
+  const { ok, data } = await api('/api/admin/events?limit=40');
+  if (!ok) return;
+  const feed = el('eventsFeed');
+  feed.textContent = '';
+  const events = data.events || [];
+  if (!events.length) {
+    feed.innerHTML = '<div class="empty">هنوز رخدادی ثبت نشده</div>';
+    return;
+  }
+  for (const e of events) {
+    const row = document.createElement('div');
+    row.className = 'feedItem';
+    const ts = document.createElement('span'); ts.className = 'ts'; ts.textContent = faTime(e.ts);
+    const badge = document.createElement('span'); badge.className = 'badge ' + esc(e.type); badge.textContent = e.type || '—';
+    const rest = document.createElement('span');
+    rest.textContent = (e.userId ? e.userId + (e.detail ? ' — ' + e.detail : '') : (e.detail || ''));
+    row.append(ts, badge, rest);
+    feed.appendChild(row);
+  }
+}
+
+async function openUser(userId) {
+  selectedUserId = userId;
+  const { ok, data } = await api('/api/admin/users/' + encodeURIComponent(userId));
+  if (!ok) { toast(data.error || 'خطا در دریافت اطلاعات کاربر'); return; }
+  const u = data.user || {};
+  el('modalTitle').textContent = (u.username || 'کاربر') + ' — ' + (u.fridgeName || '');
+  const kv = el('modalKv');
+  kv.textContent = '';
+  [['شناسه', u.userId, true], ['اقلام', u.itemsCount, false], ['آخرین همگام‌سازی', faTime(u.updatedAt), false],
+   ['آخرین درخواست AI', faTime(u.lastAiRequest), false],
+   ['صرفه‌جویی ماه', u.antiWasteStats ? u.antiWasteStats.monthlySavedTomans + ' تومان' : '—', false],
+   ['دورریز ماه', u.antiWasteStats ? u.antiWasteStats.monthlyWastedTomans + ' تومان' : '—', false],
+  ].forEach(function (pair) {
+    const k = document.createElement('div'); k.className = 'k'; k.textContent = pair[0];
+    const v = document.createElement('div'); v.textContent = pair[1];
+    if (pair[2]) v.className = 'mono';
+    kv.append(k, v);
+  });
+
+  const inv = el('modalInventory');
+  inv.textContent = '';
+  const items = Array.isArray(u.inventory) ? u.inventory : [];
+  el('modalInvEmpty').style.display = items.length ? 'none' : 'block';
+  for (const it of items) {
+    const tr = document.createElement('tr');
+    const name = typeof it === 'string' ? it : (it.name || '—');
+    const qty = typeof it === 'string' ? '' : (it.quantity == null ? '' : it.quantity);
+    const unit = typeof it === 'string' ? '' : (it.unit || '');
+    [name, qty, unit].forEach(function (value) {
+      const td = document.createElement('td'); td.textContent = value; tr.appendChild(td);
+    });
+    inv.appendChild(tr);
+  }
+
+  const me = el('modalEvents');
+  me.textContent = '';
+  const events = data.events || [];
+  if (!events.length) me.innerHTML = '<div class="empty">رخدادی برای این کاربر ثبت نشده</div>';
+  for (const e of events) {
+    const row = document.createElement('div');
+    row.className = 'feedItem';
+    const ts = document.createElement('span'); ts.className = 'ts'; ts.textContent = faTime(e.ts);
+    const badge = document.createElement('span'); badge.className = 'badge ' + esc(e.type); badge.textContent = e.type || '—';
+    const rest = document.createElement('span'); rest.textContent = e.detail || '';
+    row.append(ts, badge, rest);
+    me.appendChild(row);
+  }
+  el('modalBackdrop').classList.add('open');
+}
+
+// ── actions ─────────────────────────────────────────────────────────────────
+async function tryLogin() {
+  const token = el('tokenInput').value.trim();
+  if (!token) { el('loginError').textContent = 'توکن را وارد کنید.'; return; }
+  sessionStorage.setItem(TOKEN_KEY, token);
+  const btn = el('loginBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/admin/stats', { headers: { Authorization: 'Bearer ' + token } });
+    if (res.status === 503) {
+      sessionStorage.removeItem(TOKEN_KEY);
+      el('loginError').textContent = 'پنل روی سرور فعال نیست (ADMIN_TOKEN تنظیم نشده).';
+    } else if (!res.ok) {
+      sessionStorage.removeItem(TOKEN_KEY);
+      el('loginError').textContent = 'توکن نامعتبر است.';
+    } else {
+      showDash();
+    }
+  } catch (e) {
+    sessionStorage.removeItem(TOKEN_KEY);
+    el('loginError').textContent = 'ارتباط با سرور برقرار نشد.';
+  }
+  btn.disabled = false;
+}
+
+async function deleteUser() {
+  if (!selectedUserId) return;
+  if (!window.confirm('کاربر ' + selectedUserId + ' و اعتبار همگام‌سازی او برای همیشه حذف شود؟')) return;
+  const { ok, data } = await api('/api/admin/users/' + encodeURIComponent(selectedUserId), { method: 'DELETE' });
+  if (ok) {
+    toast('کاربر حذف شد');
+    el('modalBackdrop').classList.remove('open');
+    refreshAll();
+  } else {
+    toast(data.error || 'حذف ناموفق بود');
+  }
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh();
+  if (el('autoRefresh').checked) {
+    refreshTimer = setInterval(refreshAll, 30000);
+  }
+}
+function stopAutoRefresh() { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
+
+// ── wiring ──────────────────────────────────────────────────────────────────
+el('loginBtn').addEventListener('click', tryLogin);
+el('tokenInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') tryLogin(); });
+el('refreshBtn').addEventListener('click', refreshAll);
+el('logoutBtn').addEventListener('click', function () { showLogin(); });
+el('autoRefresh').addEventListener('change', startAutoRefresh);
+let searchTimer = null;
+el('searchBox').addEventListener('input', function () {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(loadUsers, 300);
+});
+el('closeModalBtn').addEventListener('click', function () { el('modalBackdrop').classList.remove('open'); });
+el('modalBackdrop').addEventListener('click', function (e) { if (e.target === el('modalBackdrop')) el('modalBackdrop').classList.remove('open'); });
+el('deleteUserBtn').addEventListener('click', deleteUser);
+
+// init
+if (getToken()) { showDash(); }
+</script>
+</body>
+</html>
