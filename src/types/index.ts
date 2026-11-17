@@ -70,6 +70,12 @@ export interface UserAccount {
   avatar: string;
   createdAt: string;
   fridgeName?: string;
+  /**
+   * 256-bit random secret proving this device owns the cloud sync record.
+   * Sent as `Authorization: Bearer <userId>:<syncSecret>` — never guessable
+   * from the userId (fixes the BOLA/IDOR exposure on the backend).
+   */
+  syncSecret?: string;
 }
 
 /**

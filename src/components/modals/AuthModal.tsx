@@ -97,8 +97,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setErrorMessage('لطفاً نام کاربری یا ایمیل را وارد کنید.');
       return;
     }
-    if (!regPassword || regPassword.length < 4) {
-      setErrorMessage('رمز عبور باید حداقل ۴ نویسه باشد.');
+    if (!regPassword || regPassword.length < 8) {
+      setErrorMessage('رمز عبور باید حداقل ۸ نویسه باشد.');
       return;
     }
     if (regPassword !== regConfirmPassword) {

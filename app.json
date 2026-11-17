@@ -13,6 +13,7 @@
     "android": {
       "package": "com.rezamovaheddi.yakhchalman",
       "versionCode": 6,
+      "allowBackup": false,
       "permissions": [
         "REQUEST_INSTALL_PACKAGES"
       ],

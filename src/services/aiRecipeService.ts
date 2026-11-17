@@ -1,4 +1,5 @@
 import { Ingredient, UserAccount } from '../types';
+import { authStorage } from '../utils/authStorage';
 
 export interface AiRecipeSuggestion {
   id: string;
@@ -17,7 +18,7 @@ export interface AiRecipeResponse {
   success: boolean;
   suggestions?: AiRecipeSuggestion[];
   error?: string;
-  source?: 'backend' | 'direct_gemini';
+  source?: 'backend';
   connectedUrl?: string;
   databaseSynced?: boolean;
 }
@@ -45,6 +46,50 @@ const AI_REQUEST_TIMEOUT_MS = 20000;
 const SYNC_REQUEST_TIMEOUT_MS = 8000;
 
 /**
+ * Cloud-sync credentials (fixes BOLA/IDOR on the backend).
+ * The device generates a 256-bit syncSecret per profile; requests carry
+ * `Authorization: Bearer <userId>:<syncSecret>`. The backend stores only a
+ * SHA-256 of that pair, so nobody can read or overwrite another user's fridge
+ * by guessing userIds. Registration is deduplicated per process.
+ */
+let registrationInFlight: Promise<void> | null = null;
+
+function backendUrlFor(baseEndpoint: string, path: '/api/auth/register' | '/api/user/fridge'): string {
+  return baseEndpoint.replace(/\/api\/ai\/suggest$/, path);
+}
+
+async function ensureServerRegistration(user: UserAccount): Promise<void> {
+  if (!registrationInFlight) {
+    registrationInFlight = (async () => {
+      for (const baseEndpoint of getBackendUrls()) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          const controller = new AbortController();
+          timer = setTimeout(() => controller.abort(), SYNC_REQUEST_TIMEOUT_MS);
+          await fetch(backendUrlFor(baseEndpoint, '/api/auth/register'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, syncSecret: user.syncSecret }),
+            signal: controller.signal,
+          });
+          // 200 (registered) or 409 (already known) both mean the credential
+          // pair is usable — stop here.
+          return;
+        } catch {
+          // try next url
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+      }
+    })().finally(() => {
+      // Allow a retry on the next sync attempt after failures settle.
+      registrationInFlight = null;
+    });
+  }
+  return registrationInFlight;
+}
+
+/**
  * Synchronize user's fridge and items into backend database
  */
 export async function syncFridgeToDatabase(
@@ -53,25 +98,34 @@ export async function syncFridgeToDatabase(
   inventory: Ingredient[],
   antiWasteStats?: any
 ): Promise<{ success: boolean; message?: string }> {
+  const authedUser = await authStorage.ensureSyncSecret(user);
+  if (!authedUser.syncSecret) {
+    return { success: false, message: 'کلید همگام‌سازی در دسترس نیست.' };
+  }
+
+  await ensureServerRegistration(authedUser);
+
   const backendUrls = getBackendUrls();
   const payload = {
-    userId: user.id,
-    username: user.name,
+    username: authedUser.name,
     fridgeName,
     inventory,
     antiWasteStats,
+  };
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${authedUser.id}:${authedUser.syncSecret}`,
   };
 
   for (const baseEndpoint of backendUrls) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const syncUrl = baseEndpoint.replace(/\/api\/ai\/suggest$/, '/api/user/fridge');
       const controller = new AbortController();
       timer = setTimeout(() => controller.abort(), SYNC_REQUEST_TIMEOUT_MS);
 
-      const res = await fetch(syncUrl, {
+      const res = await fetch(backendUrlFor(baseEndpoint, '/api/user/fridge'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
@@ -88,20 +142,15 @@ export async function syncFridgeToDatabase(
   return { success: false, message: 'امکان اتصال به سرور جهت ذخیره در دیتابیس مهیا نشد.' };
 }
 
-// Direct fallback configuration (loaded from environment variable if configured)
-const DIRECT_GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
-const DIRECT_GEMINI_MODEL = process.env.EXPO_PUBLIC_GEMINI_MODEL || 'gemini-3.5-flash-lite';
-
 /**
  * Fetch 3 AI recipe suggestions using the ingredients currently in the user's fridge.
- * First attempts to query the dedicated backend server (port 3001).
- * If the local server is offline or unreachable from the device network,
- * it seamlessly falls back to the direct Gemini API using the provided key.
+ * All AI traffic goes through the dedicated backend server — the old direct
+ * Gemini fallback is removed on purpose: an EXPO_PUBLIC_* API key would be
+ * embedded in the shipped APK and extractable by anyone.
  */
 export async function getAiRecipeSuggestions(
   ingredients: Ingredient[],
   preferences?: string,
-  directApiKey?: string,
   user?: UserAccount | null,
   fridgeName?: string
 ): Promise<AiRecipeResponse> {
@@ -121,12 +170,30 @@ export async function getAiRecipeSuggestions(
       storageLocation: item.storageLocation,
     })),
     preferences,
-    userId: user?.id,
     username: user?.name,
     fridgeName,
   };
 
-  // 1. Try dedicated Backend Server (Render cloud, with retry for cold starts)
+  // Authenticated requests let the backend attribute the fridge sync to the
+  // proven identity instead of a client-supplied userId.
+  let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (user) {
+    try {
+      const authedUser = await authStorage.ensureSyncSecret(user);
+      if (authedUser.syncSecret) {
+        await ensureServerRegistration(authedUser);
+        headers = {
+          ...headers,
+          Authorization: `Bearer ${authedUser.id}:${authedUser.syncSecret}`,
+        };
+      }
+    } catch {
+      // Sync credentials unavailable — proceed without the header; the AI
+      // endpoint stays usable for guests and the sync is best-effort.
+    }
+  }
+
+  // Try dedicated Backend Server (Render cloud, with retry for cold starts)
   const backendUrls = getBackendUrls();
   for (const url of backendUrls) {
     const attempts = url === PRODUCTION_BACKEND_URL ? 2 : 1;
@@ -138,7 +205,7 @@ export async function getAiRecipeSuggestions(
 
         const res = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(payload),
           signal: controller.signal,
         });
@@ -164,108 +231,8 @@ export async function getAiRecipeSuggestions(
     }
   }
 
-  // 2. Direct Gemini Fallback (if backend is offline or on a remote device)
-  const activeKey = directApiKey || DIRECT_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
-  if (!activeKey) {
-    return {
-      success: false,
-      error: 'ارتباط با سرور بک‌اند برقرار نشد. لطفاً سرور بک‌اند را روشن کنید.',
-    };
-  }
-
-  try {
-    const itemsDescription = ingredients
-      .map((item) => `${item.name} (${item.quantity} ${item.unit})`)
-      .join('، ');
-
-    const prompt = `تو یک سرآشپز حرفه‌ای و باهوش ایرانی هستی.
-موجودی فعلی یخچال کاربر شامل این مواد است:
-[ ${itemsDescription} ]
-${preferences ? `ترجیحات کاربر: ${preferences}` : ''}
-
-وظیفه تو این است که بر اساس این مواد، دقیقاً ۳ پیشنهاد غذای مناسب، لذیذ و عملی (ترجیحاً غذاهای محبوب و رایج ایرانی یا بین‌المللی متناسب با ذائقه ایرانی) ارائه کنی.
-
-خروجی باید صرفاً یک آرایه معتبر JSON شامل ۳ شیء با ساختار زیر باشد:
-[
-  {
-    "id": "ai-1",
-    "title": "نام غذا (فارسی)",
-    "description": "توضیح کوتاه و جذاب",
-    "prepTime": "مثلاً ۲۰ دقیقه",
-    "difficulty": "آسان یا متوسط یا سخت",
-    "category": "صبحانه / ناهار و شام / خوراک و نونی / اقتصادی",
-    "iconName": "یک نام از: egg, tomato, potato, cheese, milk, onion, garlic, carrot, mushroom, chicken, butter, bread, fish, meat, rice, stew, soup, herb",
-    "matchedIngredients": ["مواد استفاده شده از یخچال"],
-    "missingIngredients": ["مواد کمبوددار در صورت وجود"],
-    "instructions": [
-      "مرحله اول پخت",
-      "مرحله دوم پخت",
-      "مرحله سوم پخت"
-    ]
-  }
-]
-فقط آرایه JSON معتبر برگردان.`;
-
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${DIRECT_GEMINI_MODEL}:generateContent?key=${activeKey}`;
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.7,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: `خطا در برقراری ارتباط با مدل هوش مصنوعی (${response.status})`,
-      };
-    }
-
-    const json = await response.json();
-    const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawText) {
-      return { success: false, error: 'پاسخی از هوش مصنوعی دریافت نشد.' };
-    }
-
-    let parsed = JSON.parse(rawText);
-    if (!Array.isArray(parsed)) {
-      if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
-        parsed = parsed.suggestions;
-      } else if (parsed.recipes && Array.isArray(parsed.recipes)) {
-        parsed = parsed.recipes;
-      } else {
-        parsed = [parsed];
-      }
-    }
-
-    const sanitized: AiRecipeSuggestion[] = parsed.slice(0, 3).map((item: any, idx: number) => ({
-      id: item.id || `ai-${Date.now()}-${idx}`,
-      title: item.title || `غذای پیشنهادی ${idx + 1}`,
-      description: item.description || '',
-      prepTime: item.prepTime || '۲۵ دقیقه',
-      difficulty: item.difficulty || 'آسان',
-      category: item.category || 'ناهار و شام',
-      iconName: item.iconName || 'stew',
-      matchedIngredients: Array.isArray(item.matchedIngredients) ? item.matchedIngredients : [],
-      missingIngredients: Array.isArray(item.missingIngredients) ? item.missingIngredients : [],
-      instructions: Array.isArray(item.instructions) ? item.instructions : [],
-    }));
-
-    return {
-      success: true,
-      suggestions: sanitized,
-      source: 'direct_gemini',
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      error: err?.message || 'خطا در ارتباط با سرور هوش مصنوعی.',
-    };
-  }
+  return {
+    success: false,
+    error: 'ارتباط با سرور بک‌اند برقرار نشد. لطفاً کمی بعد دوباره تلاش کنید.',
+  };
 }

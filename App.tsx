@@ -289,6 +289,14 @@ function MainApp() {
     setSelectedItemIds(new Set());
     setHomeStep('build_fridge');
     setIsFridgeCreated(false);
+    // Clear the previous profile's financial stats so the next user or guest
+    // never sees them.
+    setAntiWasteStats({
+      monthlySavedTomans: 0,
+      monthlyWastedTomans: 0,
+      consumedItemsCount: 0,
+      wastedItemsCount: 0,
+    });
     isHydrated.current = false; // keep paused — guest state is ephemeral
     showToast('با موفقیت از پروفایل خارج شدید. 🚪', 'info');
   }, [showToast]);

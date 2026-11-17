@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 import { UserAccount } from '../types';
 
 const STORAGE_USERS_KEY = '@yakhchal_registered_users';
@@ -16,16 +17,44 @@ let memoryCurrentUser: UserAccount | null = null;
 // so that plain-text is never persisted, while still allowing local login
 // comparison without a server round-trip.
 //
-// djb2 variant — fast, dependency-free, good enough for local offline profiles.
-// If real server-side auth is ever added, replace this with a proper bcrypt /
-// argon2 implementation on the backend and stop storing passwords locally.
+// Current scheme ($cs2$): iterated salted SHA-256 via expo-crypto.
+//  - 128-bit random salt per user (no rainbow tables across users)
+//  - 200 chained SHA-256 rounds to slow brute-force attempts
+//  - replaces the old unsalted 32-bit djb2 scheme ($lp1$), which is still
+//    verified on login and transparently upgraded.
+// If real server-side auth is ever added, replace this with a proper
+// bcrypt / argon2 implementation on the backend and stop storing passwords
+// locally.
 // ---------------------------------------------------------------------------
 
+const HASH_ITERATIONS = 200;
+
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 /**
- * Produces a deterministic hex-like hash string from the given input.
- * Uses a two-pass djb2 variant to reduce trivial collisions.
+ * Produces a salted, iterated SHA-256 hash string from the given password.
+ * Format: `$cs2$<iterations>$<saltHex>$<hashHex>`
  */
-function hashPassword(password: string): string {
+async function hashPassword(password: string): Promise<string> {
+  const saltBytes = new Uint8Array(16);
+  Crypto.getRandomValues(saltBytes);
+  const salt = toHex(saltBytes);
+
+  let digest = `${salt}:${password}`;
+  for (let i = 0; i < HASH_ITERATIONS; i++) {
+    digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, digest);
+  }
+
+  return `$cs2$${HASH_ITERATIONS}$${salt}$${digest}`;
+}
+
+/**
+ * Produces the legacy unsalted djb2 hash (kept only to verify and upgrade
+ * old profiles).
+ */
+function legacyHashPassword(password: string): string {
   // First pass — forward djb2
   let h1 = 5381;
   for (let i = 0; i < password.length; i++) {
@@ -40,15 +69,36 @@ function hashPassword(password: string): string {
     h2 = h2 >>> 0;
   }
 
-  const toHex = (n: number) => n.toString(16).padStart(8, '0');
-  return `$lp1$${toHex(h1)}${toHex(h2)}`;
+  const toHex32 = (n: number) => n.toString(16).padStart(8, '0');
+  return `$lp1$${toHex32(h1)}${toHex32(h2)}`;
 }
 
 /**
- * Compares a plain-text candidate against a stored hash.
+ * Compares a plain-text candidate against a stored hash of any supported
+ * format ($cs2$ or legacy $lp1$).
  */
-function verifyPassword(candidate: string, storedHash: string): boolean {
-  return hashPassword(candidate) === storedHash;
+async function verifyPassword(candidate: string, storedHash: string): Promise<boolean> {
+  if (storedHash.startsWith('$cs2$')) {
+    // Format: $cs2$<iterations>$<salt>$<hash> → split yields ['', 'cs2', iter, salt, hash]
+    const parts = storedHash.split('$');
+    const iterations = parseInt(parts[2], 10) || HASH_ITERATIONS;
+    const salt = parts[3];
+    let digest = `${salt}:${candidate}`;
+    for (let i = 0; i < iterations; i++) {
+      digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, digest);
+    }
+    return digest === parts[4];
+  }
+  return legacyHashPassword(candidate) === storedHash;
+}
+
+/**
+ * Generates the 256-bit sync secret used to authenticate cloud sync requests.
+ */
+function generateSyncSecret(): string {
+  const bytes = new Uint8Array(32);
+  Crypto.getRandomValues(bytes);
+  return toHex(bytes);
 }
 
 // ---------------------------------------------------------------------------
@@ -165,15 +215,21 @@ export const authStorage = {
       return { success: false, error: 'پروفایلی با این نام کاربری قبلاً ساخته شده است.' };
     }
 
+    // Random 64-bit id — unlike the old usr-<timestamp> ids it cannot be
+    // guessed or enumerated by a third party.
+    const idBytes = new Uint8Array(8);
+    Crypto.getRandomValues(idBytes);
+
     const newUser: UserAccount = {
-      id: `usr-${Date.now()}`,
+      id: `usr-${toHex(idBytes)}`,
       name: trimmedName,
       username: trimmedUsername,
       // Store hash, never plain-text
-      password: hashPassword(userData.password),
+      password: await hashPassword(userData.password),
       avatar: userData.avatar || 'chef',
       createdAt: new Date().toLocaleDateString('fa-IR'),
       fridgeName: userData.fridgeName || `یخچال ${trimmedName}`,
+      syncSecret: generateSyncSecret(),
     };
 
     const updated = [newUser, ...users];
@@ -205,31 +261,36 @@ export const authStorage = {
       return { success: false, error: 'نام کاربری یا رمز عبور اشتباه است.' };
     }
 
-    // Support both legacy plain-text passwords (migration path) and new hashes.
-    // After a successful legacy login the password is re-hashed and saved.
-    const isHashedFormat = found.password.startsWith('$lp1$');
+    // $cs2$ and legacy $lp1$ hashes are verified by verifyPassword; profiles
+    // still carrying a plain-text password (pre-hashing versions) are
+    // migrated on successful login. Any profile missing a syncSecret gets one
+    // generated so cloud sync can authenticate it.
+    const isPlainText = !found.password.startsWith('$');
     let passwordOk: boolean;
 
-    if (isHashedFormat) {
-      passwordOk = verifyPassword(password, found.password);
-    } else {
-      // Legacy plain-text comparison — migrate to hash on success
+    if (isPlainText) {
       passwordOk = found.password === password;
-      if (passwordOk) {
-        const migratedUser: UserAccount = { ...found, password: hashPassword(password) };
-        const updated = users.map((u) => (u.id === found.id ? migratedUser : u));
-        await this.saveUsers(updated);
-        await this.setCurrentUser(migratedUser);
-        return { success: true, user: migratedUser };
-      }
+    } else {
+      passwordOk = await verifyPassword(password, found.password);
     }
 
     if (!passwordOk) {
       return { success: false, error: 'نام کاربری یا رمز عبور اشتباه است.' };
     }
 
-    await this.setCurrentUser(found);
-    return { success: true, user: found };
+    let authedUser = found;
+    if (isPlainText || !found.syncSecret) {
+      authedUser = {
+        ...found,
+        password: isPlainText ? await hashPassword(password) : found.password,
+        syncSecret: found.syncSecret || generateSyncSecret(),
+      };
+      const updated = users.map((u) => (u.id === found.id ? authedUser : u));
+      await this.saveUsers(updated);
+    }
+
+    await this.setCurrentUser(authedUser);
+    return { success: true, user: authedUser };
   },
 
   /**
@@ -237,5 +298,28 @@ export const authStorage = {
    */
   async logout(): Promise<void> {
     await this.setCurrentUser(null);
+  },
+
+  /**
+   * Returns the user with a guaranteed non-empty syncSecret, generating and
+   * persisting one (and refreshing the active session) when missing. Used by
+   * the cloud-sync service before it calls authenticated backend endpoints.
+   */
+  async ensureSyncSecret(user: UserAccount): Promise<UserAccount> {
+    if (user.syncSecret && /^[0-9a-f]{64}$/.test(user.syncSecret)) {
+      return user;
+    }
+
+    const patched: UserAccount = { ...user, syncSecret: generateSyncSecret() };
+
+    const users = await this.getUsers();
+    const updated = users.map((u) => (u.id === patched.id ? patched : u));
+    await this.saveUsers(updated);
+
+    const current = await this.getCurrentUser();
+    if (current?.id === patched.id) {
+      await this.setCurrentUser(patched);
+    }
+    return patched;
   },
 };

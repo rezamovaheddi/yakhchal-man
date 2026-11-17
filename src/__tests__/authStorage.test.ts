@@ -44,8 +44,10 @@ describe('Auth Storage Service (local-profile system)', () => {
     expect(saved).toBeDefined();
     // The stored value must not equal the plain-text password
     expect(saved?.password).not.toBe(plainPassword);
-    // It must start with the expected hash prefix
-    expect(saved?.password).toMatch(/^\$lp1\$/);
+    // It must use the current salted/iterated scheme
+    expect(saved?.password).toMatch(/^\$cs2\$/);
+    // ...with a per-user random salt
+    expect(saved?.password?.split('$')[3]).toHaveLength(32);
   });
 
   test('fails registration on duplicate username (case-insensitive)', async () => {
@@ -140,9 +142,60 @@ describe('Auth Storage Service (local-profile system)', () => {
     const loginRes = await authStorage.login('legacy', 'oldpassword');
     expect(loginRes.success).toBe(true);
 
-    // The stored record should now be hashed
+    // The stored record should now be hashed with the current scheme
     const users = await authStorage.getUsers();
     const updated = users.find((u) => u.username === 'legacy');
-    expect(updated?.password).toMatch(/^\$lp1\$/);
+    expect(updated?.password).toMatch(/^\$cs2\$/);
+  });
+
+  test('migrates a legacy $lp1$ hash to the current scheme on successful login', async () => {
+    // Insert a user whose password uses the old djb2 scheme
+    const legacyUser = {
+      id: 'usr-legacyhash',
+      name: 'کاربر هش قدیمی',
+      username: 'legacyhash',
+      password: '$lp1$0000000000000000', // djb2 hash (not the real one)
+      avatar: 'chef',
+      createdAt: '۱۴۰۳/۱/۱',
+    };
+    await authStorage.saveUsers([legacyUser]);
+
+    // Wrong password must fail (hash verification, not plain-text compare)
+    const wrongRes = await authStorage.login('legacyhash', 'notthepassword');
+    expect(wrongRes.success).toBe(false);
+  });
+
+  test('new profiles get an unguessable id and a 256-bit syncSecret', async () => {
+    const res = await authStorage.register({
+      name: 'کاربر سینک',
+      username: 'syncuser',
+      password: 'password123',
+      avatar: 'chef',
+    });
+
+    expect(res.success).toBe(true);
+    // id must not be a timestamp
+    expect(res.user?.id).toMatch(/^usr-[0-9a-f]{16}$/);
+    // syncSecret must be 64 hex chars (256-bit)
+    expect(res.user?.syncSecret).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  test('ensureSyncSecret backfills a secret for legacy profiles', async () => {
+    const legacyUser = {
+      id: 'usr-0123456789abcdef',
+      name: 'کاربر قدیمی',
+      username: 'nosecret',
+      password: 'whatever',
+      avatar: 'chef',
+      createdAt: '۱۴۰۳/۱/۱',
+    };
+    await authStorage.saveUsers([legacyUser]);
+
+    const patched = await authStorage.ensureSyncSecret(legacyUser);
+    expect(patched.syncSecret).toMatch(/^[0-9a-f]{64}$/);
+
+    // Persisted — a second call returns the same secret
+    const again = await authStorage.ensureSyncSecret({ ...legacyUser, syncSecret: patched.syncSecret });
+    expect(again.syncSecret).toBe(patched.syncSecret);
   });
 });

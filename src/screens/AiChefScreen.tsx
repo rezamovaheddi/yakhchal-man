@@ -51,7 +51,7 @@ export const AiChefScreen: React.FC<AiChefScreenProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [suggestions, setSuggestions] = useState<AiRecipeSuggestion[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<'backend' | 'direct_gemini' | null>(null);
+  const [source, setSource] = useState<'backend' | null>(null);
   const [selectedPreference, setSelectedPreference] = useState<string>('');
   const [loadingMsgIndex, setLoadingMsgIndex] = useState<number>(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -121,7 +121,6 @@ export const AiChefScreen: React.FC<AiChefScreenProps> = ({
       const response: AiRecipeResponse = await getAiRecipeSuggestions(
         inventory,
         preferenceToUse || undefined,
-        undefined,
         currentUser,
         fridgeName
       );
@@ -324,14 +323,12 @@ export const AiChefScreen: React.FC<AiChefScreenProps> = ({
                 <View style={styles.sourceBadgeRow}>
                   <View style={styles.sourceBadge}>
                     <Ionicons
-                      name={source === 'backend' ? 'server-outline' : 'sparkles-outline'}
+                      name="server-outline"
                       size={14}
                       color={COLORS.grayDark}
                     />
                     <Text style={styles.sourceText}>
-                      {source === 'backend'
-                        ? 'پاسخ از سرور ابری بک‌اند (Node Express ⚡)'
-                        : 'پاسخ مستقیم از مدل Gemini 3.5 ✨'}
+                      پاسخ از سرور ابری بک‌اند (Node Express ⚡)
                     </Text>
                   </View>
                   <Text style={styles.resultCountBadge}>

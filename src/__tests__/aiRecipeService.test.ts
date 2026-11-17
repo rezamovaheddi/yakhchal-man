@@ -94,67 +94,46 @@ describe('aiRecipeService', () => {
     expect(res.source).toBe('backend');
   });
 
-  it('should fall back to direct gemini if backend fails', async () => {
-    const mockGeminiJson = JSON.stringify({
-      recipes: [
-        {
-          title: 'املت گوجه فرنگی رستورانی',
-          description: 'صبحانه اصیل ایرانی',
-          prepTime: '۱۵ دقیقه',
-          difficulty: 'آسان',
-          category: 'صبحانه',
-          iconName: 'egg',
-          matchedIngredients: ['تخم‌مرغ', 'گوجه‌فرنگی'],
-          missingIngredients: ['روغن'],
-          instructions: ['گوجه را بپزید', 'تخم مرغ را بزنید'],
-        },
-      ],
-    });
+  it('should return an error when the backend is unreachable (no client-side Gemini key)', async () => {
+    // All backend URLs fail — the old direct-Gemini fallback was removed
+    // because EXPO_PUBLIC_* keys get embedded in the shipped APK.
+    (globalThis as any).fetch = jest.fn(() => Promise.reject(new Error('Connection refused')));
 
-    (globalThis as any).fetch = jest.fn((url: any) => {
-      const urlStr = String(url);
-      if (urlStr.includes('generativelanguage.googleapis.com')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({
-            candidates: [
-              {
-                content: {
-                  parts: [{ text: mockGeminiJson }],
-                },
-              },
-            ],
-          }),
-        });
-      }
-      return Promise.reject(new Error('Connection refused'));
-    });
-
-    const res = await getAiRecipeSuggestions(sampleIngredients, undefined, 'test-gemini-key');
-    expect(res.success).toBe(true);
-    expect(res.source).toBe('direct_gemini');
-    expect(res.suggestions).toHaveLength(1);
-    expect(res.suggestions?.[0].title).toBe('املت گوجه فرنگی رستورانی');
+    const res = await getAiRecipeSuggestions(sampleIngredients);
+    expect(res.success).toBe(false);
+    expect(res.error).toContain('ارتباط با سرور بک‌اند برقرار نشد');
   });
 
-  it('should sync user fridge to database successfully', async () => {
-    (globalThis as any).fetch = jest.fn(() =>
-      Promise.resolve({
+  it('should send the sync Authorization header with userId and syncSecret', async () => {
+    const fetchCalls: Array<{ url: string; init: any }> = [];
+    (globalThis as any).fetch = jest.fn((url: any, init: any) => {
+      fetchCalls.push({ url: String(url), init });
+      return Promise.resolve({
         ok: true,
         json: async () => ({ success: true, message: 'ثبت شد' }),
-      })
-    );
+      });
+    });
 
     const mockUser = {
-      id: 'usr-1',
+      id: 'usr-0123456789abcdef',
       name: 'رضا',
       username: 'reza',
       password: '123',
       avatar: 'chef',
       createdAt: '2026-10-20',
+      syncSecret: 'a'.repeat(64),
     };
 
     const res = await syncFridgeToDatabase(mockUser, 'یخچال من', sampleIngredients);
     expect(res.success).toBe(true);
+
+    const authCalls = fetchCalls.filter((c) => c.init.headers?.Authorization);
+    expect(authCalls.length).toBeGreaterThan(0);
+    expect(authCalls[0].init.headers.Authorization).toBe(
+      `Bearer usr-0123456789abcdef:${'a'.repeat(64)}`
+    );
+    // The payload must NOT carry a client-controlled userId anymore — the
+    // backend derives identity from the verified Bearer token.
+    expect(authCalls[0].init.body).not.toContain('usr-0123456789abcdef');
   });
 });
