@@ -8,7 +8,30 @@
 - **کلید API:** مقدار `GEMINI_API_KEY` در فایل `.env`
 - **مدل فعال:** `gemini-3.5-flash-lite` (پاسخ‌دهی سریع، بهینه و با پشتیبانی کامل از زبان فارسی)
 - **پورت پیش‌فرض:** `3001`
-- **شناسه تانل کلادفلر (Cloudflare Tunnel ID):** `9d434a06-3486-4303-98dd-479105d6a5d8`
+- **توکن پنل مدیریت:** `ADMIN_TOKEN` در `.env` (بخش «پنل مدیریت» را ببینید)
+
+---
+
+### پنل مدیریت (Admin Panel):
+
+داشبورد ادمین روی `/admin` سرو می‌شود و مستقیماً به دیتابیس زنده متصل است:
+آمار کاربران، جستجوی کاربر، موجودی و رخدادهای هر کاربر، فید جریان رخدادها و حذف کاربر.
+
+**فعال‌سازی روی Render (یک‌بار):**
+1. توکن را از فایل `backend/.env` (مقدار `ADMIN_TOKEN=`) کپی کنید — یا توکن تازه بسازید:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(36).toString('base64url'))"
+   ```
+2. در داشبورد Render → سرویس بک‌اند → **Environment** → متغیر جدید:
+   - Key: `ADMIN_TOKEN` — Value: همان توکن
+3. **Save Changes** (ری‌دیپلوی خودکار) و سپس `https://<your-service>.onrender.com/admin`
+
+**امنیت:** توکن با double-hash و `timingSafeEqual` مقایسه می‌شود، از query string پذیرفته
+نمی‌شود، ۱۰ تلاش اشتباه در ۱۰ دقیقه = مسدودسازی 429، و تا وقتی `ADMIN_TOKEN` تنظیم
+نشده باشد پنل کاملاً غیرفعال است (503).
+
+**قانون Rate Limit (سراسری):** حداکثر **۱۰ درخواست در دقیقه برای هر IP** روی اندپوینت‌های
+اپلیکیشن؛ `/health` و مسیرهای ادمین معاف هستند. با `RATE_LIMIT_GLOBAL` قابل تغییر است.
 
 ---
 
@@ -59,12 +82,14 @@ GET http://localhost:3001/health
 ```
 
 #### ۳. ثبت اطلاعات یخچال و اقلام کاربر در پایگاه داده (`POST /api/user/fridge`):
+نیاز به احراز هویت دستگاه دارد: `Authorization: Bearer <userId>:<syncSecret>`
+(کلید ۲۵۶بیتی سمت اپ ساخته و با `POST /api/auth/register` ثبت می‌شود)
 ```http
 POST http://localhost:3001/api/user/fridge
+Authorization: Bearer usr-abc123:def456...
 Content-Type: application/json
 
 {
-  "userId": "usr-123",
   "username": "رضا",
   "fridgeName": "یخچال خونه ما",
   "inventory": [
@@ -73,7 +98,13 @@ Content-Type: application/json
 }
 ```
 
-#### ۴. دریافت اطلاعات ذخیره‌شده کاربر از پایگاه داده (`GET /api/user/fridge/:userId`):
+#### ۴. دریافت اطلاعات ذخیره‌شده کاربر (`GET /api/user/fridge/:userId`):
+فقط با توکن معتبر همان کاربر و برای شناسه خودش.
 ```http
-GET http://localhost:3001/api/user/fridge/usr-123
+GET http://localhost:3001/api/user/fridge/usr-abc123
+Authorization: Bearer usr-abc123:def456...
 ```
+
+#### ۵. اندپوینت‌های پنل مدیریت (`/api/admin/*`):
+با هدر `Authorization: Bearer <ADMIN_TOKEN>` — آمار، لیست کاربران، جزئیات،
+رخدادها و حذف کاربر. صفحه ورود: `/admin`
