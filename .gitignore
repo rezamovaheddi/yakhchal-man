@@ -43,4 +43,6 @@ yarn-error.*
 dist/
 temp_app/
 *.apk
-.env 
+.env
+plugins/
+website/

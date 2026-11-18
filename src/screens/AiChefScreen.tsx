@@ -51,7 +51,6 @@ export const AiChefScreen: React.FC<AiChefScreenProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [suggestions, setSuggestions] = useState<AiRecipeSuggestion[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<'backend' | null>(null);
   const [selectedPreference, setSelectedPreference] = useState<string>('');
   const [loadingMsgIndex, setLoadingMsgIndex] = useState<number>(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -127,7 +126,6 @@ export const AiChefScreen: React.FC<AiChefScreenProps> = ({
 
       if (response.success && response.suggestions && response.suggestions.length > 0) {
         setSuggestions(response.suggestions);
-        setSource(response.source || 'backend');
         if (response.suggestions[0]) {
           setExpandedId(response.suggestions[0].id);
         }

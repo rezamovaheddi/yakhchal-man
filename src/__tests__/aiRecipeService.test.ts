@@ -105,7 +105,7 @@ describe('aiRecipeService', () => {
   });
 
   it('should send the sync Authorization header with userId and syncSecret', async () => {
-    const fetchCalls: Array<{ url: string; init: any }> = [];
+    const fetchCalls: { url: string; init: any }[] = [];
     (globalThis as any).fetch = jest.fn((url: any, init: any) => {
       fetchCalls.push({ url: String(url), init });
       return Promise.resolve({

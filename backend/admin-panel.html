@@ -73,7 +73,7 @@
   .kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 10px; font-size: 13px; margin: 12px 0; }
   .kv .k { color: var(--muted); }
   .modalActions { display: flex; gap: 10px; margin-top: 14px; }
-  .mono { direction: ltr; text-align: left; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+  .mono { direction: ltr; text-align: left; font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; }
   .feedItem { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; align-items: baseline; }
   .feedItem .ts { color: var(--muted); direction: ltr; white-space: nowrap; font-size: 11px; }
   .empty { color: var(--muted); text-align: center; padding: 24px 0; }
@@ -118,7 +118,7 @@
         <div class="sectionTitle">👥 کاربران</div>
         <div style="overflow-x:auto">
           <table>
-            <thead><tr><th>کاربر</th><th>یخچال</th><th>اقلام</th><th class="weak">آخرین فعالیت</th><th class="weak">شناسه</th></tr></thead>
+            <thead><tr><th>کاربر / ایمیل</th><th>امنیت پسورد</th><th>یخچال</th><th>اقلام</th><th class="weak">آخرین فعالیت</th><th class="weak">شناسه</th></tr></thead>
             <tbody id="usersBody"></tbody>
           </table>
         </div>
@@ -252,19 +252,56 @@ async function loadUsers() {
   for (const u of currentUsers) {
     const tr = document.createElement('tr');
     tr.className = 'rowBtn';
-    const cells = [
-      u.username || '—',
-      u.fridgeName || '—',
-      u.itemsCount == null ? '—' : u.itemsCount,
-      faTime(u.updatedAt),
-      u.userId || '—',
-    ];
-    cells.forEach(function (value, i) {
-      const td = document.createElement('td');
-      if (i === 4) { td.className = 'weak'; }
-      td.textContent = value; // textContent → XSS-safe
-      tr.appendChild(td);
-    });
+
+    // 1. Name & Username/Email
+    const tdUser = document.createElement('td');
+    const nameDiv = document.createElement('div');
+    nameDiv.style.fontWeight = '700';
+    nameDiv.textContent = u.name || u.username || 'کاربر';
+    const subDiv = document.createElement('div');
+    subDiv.className = 'weak';
+    subDiv.textContent = u.username || '—';
+    tdUser.append(nameDiv, subDiv);
+    tr.appendChild(tdUser);
+
+    // 2. Password Hash security badge
+    const tdPass = document.createElement('td');
+    const badge = document.createElement('span');
+    if (u.hasPassword || u.passwordHash) {
+      badge.className = 'badge register';
+      badge.textContent = u.passwordHash && u.passwordHash.startsWith('$cs2$')
+        ? '🔒 Salted SHA-256'
+        : '🔒 هش‌شده';
+      if (u.passwordHash) badge.title = u.passwordHash;
+    } else {
+      badge.className = 'badge';
+      badge.textContent = 'بدون رمز';
+    }
+    tdPass.appendChild(badge);
+    tr.appendChild(tdPass);
+
+    // 3. Fridge Name
+    const tdFridge = document.createElement('td');
+    tdFridge.textContent = u.fridgeName || '—';
+    tr.appendChild(tdFridge);
+
+    // 4. Items count
+    const tdItems = document.createElement('td');
+    tdItems.textContent = u.itemsCount == null ? '—' : u.itemsCount;
+    tr.appendChild(tdItems);
+
+    // 5. Last active time
+    const tdTime = document.createElement('td');
+    tdTime.className = 'weak';
+    tdTime.textContent = faTime(u.updatedAt);
+    tr.appendChild(tdTime);
+
+    // 6. User Id
+    const tdId = document.createElement('td');
+    tdId.className = 'weak mono';
+    tdId.textContent = u.userId || '—';
+    tr.appendChild(tdId);
+
     tr.addEventListener('click', function () { openUser(u.userId); });
     body.appendChild(tr);
   }
@@ -297,10 +334,21 @@ async function openUser(userId) {
   const { ok, data } = await api('/api/admin/users/' + encodeURIComponent(userId));
   if (!ok) { toast(data.error || 'خطا در دریافت اطلاعات کاربر'); return; }
   const u = data.user || {};
-  el('modalTitle').textContent = (u.username || 'کاربر') + ' — ' + (u.fridgeName || '');
+  el('modalTitle').textContent = (u.name || u.username || 'کاربر') + ' — ' + (u.fridgeName || '');
   const kv = el('modalKv');
   kv.textContent = '';
-  [['شناسه', u.userId, true], ['اقلام', u.itemsCount, false], ['آخرین همگام‌سازی', faTime(u.updatedAt), false],
+  const hashLabel = u.passwordHash
+    ? (u.passwordHash.startsWith('$cs2$') ? 'Salted SHA-256 (امن و یک‌طرفه)' : 'Legacy djb2')
+    : 'تنظیم‌نشده';
+  [['نام کامل', u.name || '—', false],
+   ['نام کاربری / ایمیل', u.username || '—', false],
+   ['شناسه کاربری', u.userId, true],
+   ['هش ایمیل/کاربر (SHA-256)', u.emailHash || '—', true],
+   ['الگوریتم رمز عبور', hashLabel, false],
+   ['هش پسورد در دیتابیس (Password Hash)', u.passwordHash || 'بدون پسورد', true],
+   ['اقلام موجود در یخچال', u.itemsCount, false],
+   ['تاریخ ایجاد پروفایل', faTime(u.createdAt), false],
+   ['آخرین همگام‌سازی', faTime(u.updatedAt), false],
    ['آخرین درخواست AI', faTime(u.lastAiRequest), false],
    ['صرفه‌جویی ماه', u.antiWasteStats ? u.antiWasteStats.monthlySavedTomans + ' تومان' : '—', false],
    ['دورریز ماه', u.antiWasteStats ? u.antiWasteStats.monthlyWastedTomans + ' تومان' : '—', false],

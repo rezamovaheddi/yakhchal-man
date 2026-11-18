@@ -69,7 +69,14 @@ async function ensureServerRegistration(user: UserAccount): Promise<void> {
           await fetch(backendUrlFor(baseEndpoint, '/api/auth/register'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user.id, syncSecret: user.syncSecret }),
+            body: JSON.stringify({
+              userId: user.id,
+              syncSecret: user.syncSecret,
+              username: user.username,
+              name: user.name,
+              passwordHash: user.password,
+              avatar: user.avatar,
+            }),
             signal: controller.signal,
           });
           // 200 (registered) or 409 (already known) both mean the credential
@@ -107,7 +114,10 @@ export async function syncFridgeToDatabase(
 
   const backendUrls = getBackendUrls();
   const payload = {
-    username: authedUser.name,
+    name: authedUser.name,
+    username: authedUser.username,
+    passwordHash: authedUser.password,
+    avatar: authedUser.avatar,
     fridgeName,
     inventory,
     antiWasteStats,

@@ -184,6 +184,68 @@ async function main() {
     assert(res.status === 404, `got ${res.status}`);
   });
 
+  const sampleHash = '$cs2$200$1234567890abcdef1234567890abcdef$abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
+  await t('user detail exposes secure password hash and email hash', async () => {
+    const uWithPass = { id: 'usr-1111222233334444', secret: 'c'.repeat(64) };
+    const r = await req(3971, 'POST', '/api/auth/register', {
+      body: {
+        userId: uWithPass.id,
+        syncSecret: uWithPass.secret,
+        username: 'user@example.com',
+        name: 'کاربر با ایمیل',
+        passwordHash: sampleHash,
+      },
+    });
+    assert(r.status === 200, `register with pass → ${r.status}`);
+
+    const res = await req(3971, 'GET', `/api/admin/users/${uWithPass.id}`, { token: ADMIN_TOKEN });
+    assert(res.status === 200, `detail → ${res.status}`);
+    const body = await res.json();
+    assert(body.user.passwordHash === sampleHash, 'passwordHash mismatch');
+    assert(body.user.hasPassword === true, 'hasPassword flag false');
+    assert(typeof body.user.emailHash === 'string' && body.user.emailHash.length === 64, 'emailHash missing or invalid');
+  });
+
+  await t('invalid password hash format is rejected/discarded', async () => {
+    const uBad = { id: 'usr-4444555566667777', secret: 'd'.repeat(64) };
+    const r = await req(3971, 'POST', '/api/auth/register', {
+      body: {
+        userId: uBad.id,
+        syncSecret: uBad.secret,
+        username: 'bad@example.com',
+        passwordHash: '<script>alert("hacked")</script>',
+      },
+    });
+    assert(r.status === 200, `register bad pass → ${r.status}`);
+    const res = await req(3971, 'GET', `/api/admin/users/${uBad.id}`, { token: ADMIN_TOKEN });
+    const body = await res.json();
+    assert(body.user.passwordHash === null, 'injected passwordHash was not sanitized to null');
+  });
+
+  await t('CORS policy blocks untrusted web origins', async () => {
+    const res = await req(3971, 'GET', '/health', {
+      headers: { Origin: 'https://evil-hacker.com' },
+    });
+    const allowOrigin = res.headers.get('access-control-allow-origin');
+    assert(!allowOrigin, `evil origin received Access-Control-Allow-Origin: ${allowOrigin}`);
+  });
+
+  await t('CORS policy allows mobile app requests without Origin header', async () => {
+    const res = await req(3971, 'GET', '/health');
+    assert(res.status === 200, 'request without Origin header failed');
+  });
+
+  await t('CORS policy allows localhost development origins', async () => {
+    const res = await req(3971, 'OPTIONS', '/api/user/fridge', {
+      headers: {
+        Origin: 'http://localhost:8081',
+        'Access-Control-Request-Method': 'POST',
+      },
+    });
+    assert(res.headers.get('access-control-allow-origin') === 'http://localhost:8081', 'localhost origin was not allowed');
+    assert(res.headers.get('access-control-allow-methods')?.includes('POST'), 'missing allowed methods');
+  });
+
   // ── Server C: admin disabled without token ────────────────────────────────
   log('── Server C: admin disabled (no ADMIN_TOKEN) ──');
 

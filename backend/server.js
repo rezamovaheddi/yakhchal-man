@@ -180,7 +180,7 @@ function authenticate(req) {
 // ---------------------------------------------------------------------------
 
 const MAX_INVENTORY_ITEMS = 50;
-const MAX_STRING_FIELDS = { name: 60, unit: 24, preferences: 200, username: 60, fridgeName: 60 };
+const MAX_STRING_FIELDS = { name: 60, unit: 24, preferences: 200, username: 100, fridgeName: 60 };
 
 // Strips control characters and prompt-structure brackets from any text that
 // will be interpolated into the Gemini prompt.
@@ -192,6 +192,15 @@ function sanitizeText(value, maxLen) {
     .replace(/[[\]{}]/g, '')
     .trim()
     .slice(0, maxLen);
+}
+
+function sanitizePasswordHash(raw) {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (/^\$(cs2|lp1)\$[a-zA-Z0-9$]+$/.test(trimmed) && trimmed.length <= 256) {
+    return trimmed;
+  }
+  return null;
 }
 
 function sanitizeInventory(raw) {
@@ -206,8 +215,45 @@ function sanitizeInventory(raw) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Strict CORS configuration
+// ---------------------------------------------------------------------------
+// Mobile applications (Android/iOS) do NOT send browser Origin headers and are
+// not subject to browser CORS policies. For web browsers, we strictly whitelist:
+// 1. Same-origin (https://yakhchal-man.onrender.com or custom domain)
+// 2. Local development origins (localhost, 127.0.0.1 on various ports)
+// 3. Any additional origins configured via ALLOWED_ORIGINS (comma-separated)
+// Cross-origin requests from untrusted web domains (e.g. evil.com) are blocked.
+
+const extraAllowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim().toLowerCase())
+  .filter(Boolean);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true; // Mobile apps (React Native / OkHttp), curl, server-to-server
+  const lower = origin.toLowerCase();
+  if (lower === 'https://yakhchal-man.onrender.com') return true;
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(lower)) return true;
+  if (extraAllowedOrigins.includes(lower)) return true;
+  return false;
+}
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400,
+};
+
 app.disable('x-powered-by');
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '100kb' }));
 
 app.use(globalLimiter);
@@ -225,7 +271,7 @@ app.get('/health', (req, res) => {
 
 // ── Account registration (pairs a userId with its device-generated secret) ──
 app.post('/api/auth/register', (req, res) => {
-  const { userId, syncSecret, username, fridgeName } = req.body || {};
+  const { userId, syncSecret, username, name, passwordHash, avatar } = req.body || {};
 
   if (typeof userId !== 'string' || !/^usr-[0-9a-fA-F-]{8,48}$/.test(userId)) {
     return res.status(400).json({ success: false, error: 'شناسه کاربر نامعتبر است.' });
@@ -238,10 +284,29 @@ app.post('/api/auth/register', (req, res) => {
   }
 
   db.credentials[userId] = sha256Hex(`${userId}:${syncSecret.toLowerCase()}`);
-  scheduleSave();
-  logEvent('register', userId, sanitizeText(username, 40) || null);
 
-  console.log(`🔑 حساب سرآشپز برای [${sanitizeText(username, 40) || userId}] ثبت شد.`);
+  const cleanUsername = sanitizeText(username, MAX_STRING_FIELDS.username);
+  const cleanName = sanitizeText(name, MAX_STRING_FIELDS.name);
+  const safeHash = sanitizePasswordHash(passwordHash);
+
+  db.users[userId] = {
+    userId,
+    name: cleanName || cleanUsername || 'کاربر',
+    username: cleanUsername || 'کاربر',
+    emailHash: cleanUsername ? sha256Hex(cleanUsername.toLowerCase()) : null,
+    passwordHash: safeHash,
+    avatar: sanitizeText(avatar, 32) || 'chef',
+    fridgeName: 'یخچال من',
+    inventory: [],
+    itemsCount: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  scheduleSave();
+  logEvent('register', userId, cleanUsername || cleanName || null);
+
+  console.log(`🔑 حساب سرآشپز برای [${cleanUsername || cleanName || userId}] ثبت شد.`);
   return res.json({ success: true, message: 'حساب همگام‌سازی با موفقیت ثبت شد.' });
 });
 
@@ -253,16 +318,28 @@ app.post('/api/user/fridge', (req, res) => {
   }
 
   try {
-    const { username, fridgeName, inventory = [], antiWasteStats } = req.body || {};
+    const { name, username, passwordHash, avatar, fridgeName, inventory = [], antiWasteStats } = req.body || {};
     const safeInventory = sanitizeInventory(inventory);
+    const cleanUsername = sanitizeText(username, MAX_STRING_FIELDS.username);
+    const cleanName = sanitizeText(name, MAX_STRING_FIELDS.name);
+    const safeHash = sanitizePasswordHash(passwordHash);
+
+    const existing = db.users[authUserId];
 
     db.users[authUserId] = {
       userId: authUserId,
-      username: sanitizeText(username, MAX_STRING_FIELDS.username) || 'کاربر',
-      fridgeName: sanitizeText(fridgeName, MAX_STRING_FIELDS.fridgeName) || 'یخچال من',
+      name: cleanName || existing?.name || cleanUsername || 'کاربر',
+      username: cleanUsername || existing?.username || 'کاربر',
+      emailHash: (cleanUsername || existing?.username)
+        ? sha256Hex((cleanUsername || existing?.username).toLowerCase())
+        : null,
+      passwordHash: safeHash || existing?.passwordHash || null,
+      avatar: sanitizeText(avatar, 32) || existing?.avatar || 'chef',
+      fridgeName: sanitizeText(fridgeName, MAX_STRING_FIELDS.fridgeName) || existing?.fridgeName || 'یخچال من',
       inventory: safeInventory,
       antiWasteStats: antiWasteStats && typeof antiWasteStats === 'object' ? antiWasteStats : null,
       itemsCount: safeInventory.length,
+      createdAt: existing?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     scheduleSave();
@@ -338,10 +415,16 @@ adminApi.use((req, res, next) => {
 function publicUserView(user) {
   return {
     userId: user.userId,
-    username: user.username,
-    fridgeName: user.fridgeName,
-    itemsCount: user.itemsCount,
+    name: user.name || user.username || 'کاربر',
+    username: user.username || '—',
+    emailHash: user.emailHash || (user.username ? sha256Hex(user.username.toLowerCase()) : null),
+    passwordHash: user.passwordHash || null,
+    hasPassword: Boolean(user.passwordHash),
+    avatar: user.avatar || 'chef',
+    fridgeName: user.fridgeName || 'یخچال من',
+    itemsCount: user.itemsCount || 0,
     updatedAt: user.updatedAt || null,
+    createdAt: user.createdAt || null,
     lastAiRequest: user.lastAiRequest || null,
   };
 }
@@ -370,7 +453,7 @@ adminApi.get('/users', (req, res) => {
     .filter(
       (u) =>
         !q ||
-        [u.username, u.fridgeName, u.userId].some((v) =>
+        [u.name, u.username, u.fridgeName, u.userId, u.emailHash].some((v) =>
           String(v || '').toLowerCase().includes(q)
         )
     )
