@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Linking,
   ActivityIndicator,
 } from 'react-native';
 import { RetroWindow } from '../common/RetroWindow';
@@ -13,7 +12,7 @@ import { RetroButton } from '../common/RetroButton';
 import { RetroBadge } from '../common/RetroBadge';
 import { RetroProgressBar } from '../common/RetroProgressBar';
 import { AppReleaseInfo, UpdateCheckState } from '../../types';
-import { CURRENT_APP_VERSION, downloadAndInstallApk } from '../../utils/updateService';
+import { CURRENT_APP_VERSION, openUpdatePage } from '../../utils/updateService';
 import { toPersianDigits } from '../../utils/persian';
 import { COLORS, BORDER, RETRO_SHADOW } from '../../constants/theme';
 import {
@@ -40,54 +39,22 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
   onClose,
   onRetryCheck,
 }) => {
-  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
-  const [installStatusText, setInstallStatusText] = useState<string>('');
+  const [isOpeningUpdate, setIsOpeningUpdate] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
 
   const handleStartUpdate = async () => {
     if (!releaseInfo) return;
     setInstallError(null);
+    setIsOpeningUpdate(true);
 
-    // If there is a direct APK asset download URL
-    if (releaseInfo.downloadUrl) {
-      setDownloadProgress(0);
-      setInstallStatusText('در حال دانلود بسته نصب...');
+    const targetUrl = releaseInfo.webUrl || releaseInfo.downloadUrl || '';
+    const result = await openUpdatePage(targetUrl);
 
-      const result = await downloadAndInstallApk(releaseInfo.downloadUrl, (percent) => {
-        setDownloadProgress(percent);
-        if (percent >= 100) {
-          setInstallStatusText('دانلود انجام شد! در حال آماده‌سازی و راه‌اندازی نصب...');
-        } else {
-          setInstallStatusText(`در حال دانلود مستقیم بسته (${toPersianDigits(percent)}٪)...`);
-        }
-      });
-
-      if (!result.success) {
-        setInstallError(result.error || 'خطا در بارگیری یا نصب بسته.');
-        setDownloadProgress(null);
-      } else {
-        // Installer launched!
-        setTimeout(() => {
-          setDownloadProgress(null);
-          setInstallStatusText('');
-          onClose();
-        }, 1500);
-      }
+    setIsOpeningUpdate(false);
+    if (!result.success) {
+      setInstallError(result.error || 'امکان باز کردن نشانی به‌روزرسانی وجود ندارد.');
     } else {
-      // Fallback if release only has HTML webUrl
-      try {
-        setDownloadProgress(100);
-        setInstallStatusText('فایل مستقیم یافت نشد، در حال ارجاع به صفحه انتشار...');
-        await Linking.openURL(releaseInfo.webUrl);
-        setTimeout(() => {
-          setDownloadProgress(null);
-          setInstallStatusText('');
-          onClose();
-        }, 1000);
-      } catch {
-        setInstallError('امکان باز کردن نشانی به‌روزرسانی وجود ندارد.');
-        setDownloadProgress(null);
-      }
+      onClose();
     }
   };
 
@@ -194,25 +161,11 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
                     <Text style={styles.notesText}>{releaseInfo.releaseNotes}</Text>
                   </View>
 
-                  {/* Download Progress Bar if active */}
-                  {downloadProgress !== null && (
-                    <View style={styles.downloadProgressSection}>
-                      <Text style={styles.downloadLabel}>
-                        {installStatusText || `در حال دانلود بسته (${toPersianDigits(downloadProgress)}٪)...`}
-                      </Text>
-                      <RetroProgressBar
-                        percentage={downloadProgress}
-                        blockColor={COLORS.green}
-                        style={{ marginTop: 6 }}
-                      />
-                    </View>
-                  )}
-
-                  {/* In-App Installation Error if any */}
+                  {/* Update Open Error if any */}
                   {installError && (
                     <View style={styles.installErrorBox}>
                       <View style={styles.errorRow}>
-                        <Ionicons name="alert-circle" size={14} color="#D9381E" />
+                        <Ionicons name="alert-circle" size={14} color="#D32F2F" />
                         <Text style={styles.installErrorText}>{installError}</Text>
                       </View>
                     </View>
@@ -222,18 +175,18 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
                   <View style={styles.actionButtons}>
                     <RetroButton
                       label={
-                        downloadProgress !== null
-                          ? 'در حال پردازش و نصب...'
-                          : 'نصب خودکار درون‌برنامه‌ای'
+                        isOpeningUpdate
+                          ? 'در حال باز کردن صفحه...'
+                          : 'دریافت نسخه جدید'
                       }
                       icon={
-                        downloadProgress !== null ? undefined : (
+                        isOpeningUpdate ? undefined : (
                           <RetroDownloadIcon size={16} color={COLORS.black} />
                         )
                       }
                       variant="primary"
                       onPress={handleStartUpdate}
-                      disabled={downloadProgress !== null}
+                      disabled={isOpeningUpdate}
                       size="md"
                     />
 
@@ -242,7 +195,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
                       icon={<RetroCloseIcon size={12} color={COLORS.black} />}
                       variant="secondary"
                       onPress={onClose}
-                      disabled={downloadProgress !== null}
+                      disabled={isOpeningUpdate}
                       size="sm"
                     />
                   </View>
@@ -367,15 +320,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.black,
     lineHeight: 18,
-    textAlign: 'right',
-  },
-  downloadProgressSection: {
-    marginBottom: 12,
-  },
-  downloadLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.black,
     textAlign: 'right',
   },
   actionButtons: {

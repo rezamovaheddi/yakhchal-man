@@ -11,8 +11,8 @@ describe('updateService', () => {
     expect(compareVersions('1.1.0', '1.1.1')).toBe(-1);
   });
 
-  test('CURRENT_APP_VERSION is 1.5.0', () => {
-    expect(CURRENT_APP_VERSION).toBe('1.5.0');
+  test('CURRENT_APP_VERSION is 1.5.1', () => {
+    expect(CURRENT_APP_VERSION).toBe('1.5.1');
   });
 
   test('checkForAppUpdates handles successful fetch with newer version', async () => {
@@ -93,9 +93,14 @@ describe('updateService', () => {
     expect(res.error).toBeDefined();
   });
 
-  test('downloadAndInstallApk handles fallback or error gracefully', async () => {
-    const { downloadAndInstallApk } = await import('../utils/updateService');
-    const result = await downloadAndInstallApk('https://invalid-host-for-testing/app.apk');
-    expect(typeof result.success).toBe('boolean');
+  test('openUpdatePage opens valid https URL and rejects invalid URLs', async () => {
+    const { openUpdatePage } = await import('../utils/updateService');
+
+    const okResult = await openUpdatePage('https://github.com/rezamovaheddi/yakhchal-man/releases');
+    expect(okResult.success).toBe(true);
+
+    const badResult = await openUpdatePage('javascript:alert(1)');
+    expect(badResult.success).toBe(false);
+    expect(badResult.error).toBeDefined();
   });
 });

@@ -7,8 +7,6 @@ module.exports = {
   moduleNameMapper: {
     '^react-native$': '<rootDir>/src/__mocks__/react-native.js',
     '^expo-crypto$': '<rootDir>/src/__mocks__/expo-crypto.js',
-    '^expo-file-system/legacy$': '<rootDir>/src/__mocks__/expo-file-system.js',
-    '^expo-intent-launcher$': '<rootDir>/src/__mocks__/expo-intent-launcher.js',
   },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
